@@ -1,8 +1,9 @@
-# Ledger: a finance tracker on your phone, saved in a Google Sheet
+# Ledger: a personal finance dashboard, saved in a Google Sheet
 
-You get a phone app with a dashboard, a transaction list, budgets and manual entry.
-It also reads your bank's alert emails in Gmail and adds those transactions for you.
-Everything is stored in a Google Sheet that you own. Only your Google account can open the app.
+Ledger shows where you stand financially: net worth, cash flow, spending, investments, debts, goals, and a set of financial-health indicators measured against standard benchmarks.
+It reads your bank's alert emails in Gmail and adds those transactions for you. You can also enter payments by hand.
+Everything is stored in a Google Sheet that you own. The app only displays the Sheet and adds to it. Only your Google account can open the app.
+It works on a phone (bottom tabs) and on a laptop (wider layout).
 
 Setup takes about 5 minutes.
 
@@ -23,7 +24,7 @@ Setup takes about 5 minutes.
    - **Gmail**, to read bank alerts. It only reads; it never sends or deletes.
    - **Triggers**, for the 15-minute email check
 
-Go back to the sheet. It now has four tabs: **Transactions**, **Budgets**, **Rules** and **Settings**.
+Go back to the sheet. It now has all its tabs (Transactions, Accounts, Investments, Goals, Debts, History, Categories, Budgets, Rules and Settings).
 
 ## 3. Publish it as your app
 
@@ -47,52 +48,93 @@ It now opens from your home screen like an app.
 
 ## Using it
 
-- **+ button:** add an expense or income. Enter the amount, tap a category, and save. The app remembers the last category you used.
-- **Tap any transaction** to edit or delete it. Delete has an Undo.
-- **Dashboard:** this month's spending against your budget, income, net saved, a 6-month chart, spending by category and recent transactions. Use ‹ › to change month.
-- **Activity:** search and filter by spending, income or **From email**. Tap a category on the dashboard to see only its transactions.
-- **Debts:** track money you owe and money owed to you, each with who it's with, the total, a deadline and a note. Tap a debt to record part-payments. When the payments reach the total, it moves to **Paid off**. The dashboard shows what's overdue or due within 7 days.
-- **Budgets:** set a monthly limit per category. Open it from the dashboard or Settings.
-- **Your own categories:** tap **＋ New** in the category grid when adding a transaction, or go to Settings → Your categories. Each one gets a name, an icon, and Expense or Income.
-- **Cards & accounts:** add each card with its last 4 digits, under Settings → Cards & accounts. Manual entries get a "Paid with" picker, imported email alerts are matched to the right card, and you can filter Activity by card.
-- **Settings:** email import on/off, **Check now**, **Import older emails**, currency, and a link to the sheet.
+A period picker at the top (This month, Last 3 months, This year, custom dates…) controls Overview, Spending and Activity.
+
+- **Overview:** net worth with its monthly history, then income, spending, investing and saved for the period. Below that:
+  - **Financial health:** each indicator shows its value, the benchmark and a status (Healthy / Borderline / Off target). Tap one to see how it's worked out and where the benchmark comes from.
+  - A 12-month cash-flow chart, and what's coming up.
+- **Spending:** needs / wants / savings as a share of income against 50/30/20, spending by category against your budget, spending by month, and top payees.
+- **Wealth:**
+  - Net worth broken into assets and liabilities.
+  - Emergency fund in months of essential spending.
+  - Progress to financial independence (FI number = annual spending × 33 by default) and the time to reach it at your current pace.
+  - Investments with allocation and gain, goals, accounts and credit cards with utilization, and debts.
+- **Activity:** every transaction. Filter by type, category, account and source (entered by you / email / statement), search, and sort. **Possible duplicates** lists pairs to merge.
+- **Settings:** your profile and targets, category groups, email import, currency.
+
+### How things are counted
+
+Every category has a **Group** (Settings, or the Categories tab):
+
+| Group | Counted as |
+|---|---|
+| Need | spending (essential) |
+| Want | spending (discretionary) |
+| Debt | spending, and in EMIs-to-income (e.g. Loan EMI) |
+| Savings | saved, not spent (e.g. Investing for SIPs) |
+| Transfer | ignored (credit card bill payments, moving money between your own accounts) |
+| Income | income |
+
+### No double counting
+
+- If an email alert matches a payment you already entered by hand (same type and amount, within 2 days), it's **linked** to your entry instead of being added. Your category stays, and the card gets filled in.
+- If you add a payment by hand that was already imported, Ledger asks **Already recorded?** and updates the imported one instead.
+- Rows imported from a bank statement (Source = `Statement`) also stop the same email alerts from being added.
+- Anything that slips through shows up under **Activity → Possible duplicates**, with a Merge button.
+- When you re-file an imported payment, Ledger offers to re-file every other payment with the same payee and to add a **Rule**, so future imports get it right.
 
 ### Getting all your transactions in (several cards)
 
 1. **Turn on email alerts for every card** in each bank's app or net banking. Choose "all transactions", not just large ones.
-2. **Add each card** under Settings → Cards & accounts, with its last 4 digits.
+2. **Add each account and card** under Wealth → Accounts & cards: the last 4 digits, the balance, and for credit cards the limit and the amount owed.
 3. **Import your history:** go to Settings → Import older emails, pick 90 days or 1 year, and tap **Import**. One run reads up to about 600 email threads. Run it again to pick up more.
-4. From then on, new alerts arrive automatically every 15 minutes. Anything without an email alert, like cash or a friend's UPI, goes in with the **+** button.
+4. **Or import a bank statement:** convert it to a CSV with the Transactions columns in order (ID left blank, Source `Statement`). Open the **Transactions** tab, go to File → Import → Upload, and choose **Append to current sheet**.
+5. From then on, new alerts arrive automatically every 15 minutes.
 
 ### Email import
 
-Every 15 minutes, the script searches Gmail for bank alert emails. It reads the amount, whether money went out or came in, and the merchant (for example "Rs 450 debited… to VPA swiggy@icici" or "INR 2,349 at AMAZON"). It skips OTPs, statements and payment reminders. Each email is imported only once. Imported transactions show an **EMAIL** tag. Tap one to change its category.
+Every 15 minutes, the script searches Gmail for bank alert emails. It reads the amount, whether money went out or came in, and the merchant. It skips OTPs, statements and payment reminders, and imports each email only once.
 
 - **To make the search stricter:** go to Settings → "Which emails it reads" and add your bank's sender address, e.g. `from:(alerts@hdfcbank.net OR credit_cards@icicibank.com) newer_than:7d`.
-- **To fix categories:** add rows to the **Rules** tab in the sheet. If the email contains `swiggy`, the transaction goes in `Food & dining`. The first matching rule wins.
-- **Duplicates:** paying a credit card bill from your bank shows up twice (once from the bank, once from the card). Delete one of them or give it the **Transfers** category.
+- **Categories:** these come from the **Rules** tab. If the email contains `swiggy`, the transaction goes in `Food & dining`. The first matching rule wins.
 
 ### SMS alerts
 
-Google can't read text messages on your phone. Most banks send the same alert by email too, so turn on email alerts in your bank's app. If your bank only sends SMS:
+Google can't read text messages on your phone. Most banks send the same alert by email too. If yours only sends SMS:
 
-- **Android:** use an "SMS to Gmail" forwarding app, filtered to your bank's sender.
-- **iPhone:** in the Shortcuts app, create a Personal Automation: *Message received from [bank] → Send Email to yourself*.
-
-The forwarded messages land in Gmail and get picked up automatically. You may need to add the forwarder's sender address to the search.
+- **Android:** use an "SMS to Gmail" forwarding app.
+- **iPhone:** create a Shortcuts automation: *Message received from [bank] → Send Email to yourself*.
 
 ### Sheet tabs
 
 | Tab | What's in it |
 |---|---|
-| Transactions | every income / expense, including the Account (card) it was paid with |
+| Transactions | every income / expense, with Source (Manual, Email, Statement) and Account |
+| Accounts | bank accounts and cards: `Balance` (for a credit card, the amount owed), `Credit limit`, `Purpose` (e.g. Emergency fund) |
+| Investments | holdings: `Type`, `Invested`, `Current value`, `Purpose` |
+| Goals | `Target amount`, `Target date`, `Saved so far` |
+| Debts / Debt payments | money you owe or are owed, with deadlines and part-payments |
+| History | net worth at each month end. It fills itself in whenever you open the app, so don't edit it. |
+| Categories | every category with its emoji and Group |
 | Budgets | monthly limit per category |
-| Debts | `Source`, `Direction` (I owe / Owed to me), `Amount`, `Due date`, `Note` |
-| Debt payments | each part-payment, linked to a debt by its ID |
-| Categories | your own categories: `Name`, `Type` (Expense/Income), `Emoji` |
-| Accounts | your cards: `Name`, `Type`, `Last 4 digits` |
 | Rules | keyword → category for imported emails |
-| Settings | currency, Gmail search, last email check |
+| Settings | your profile and targets (age, take-home, FI multiple, return, inflation, insurance covers), currency, Gmail search |
+
+### Where the benchmarks come from
+
+Indian bank and fintech guidance: Kotak, Bank of Baroda, Axis Bank, Bajaj Finserv, Policybazaar, Acko, Finnovate and freefincal. Global references: Fidelity (savings by age), SoFi and DBS (personal financial ratios). The defaults are:
+
+- **Savings rate:** at least 20%, and 30%+ counts as strong.
+- **Emergency fund:** 6 months of essentials, with 3 as the minimum.
+- **FI multiple:** 33× annual spending (Indian planners use 28–33×, the US 4% rule gives 25×).
+- **EMIs to income:** 30% or less (lenders cap at 40–50%).
+- **Card utilization:** under 30%.
+- **Term life cover:** 10–15× income.
+- **Health cover:** ₹10–15L.
+- **Equity share:** between 100 − age and 120 − age.
+- **Net worth for your age:** Fidelity's 1× income by 30, 3× by 40.
+
+No standard exists for how many credit cards to hold, so the count shows without a status. All targets are editable in Settings.
 
 ### Editing the sheet directly
 
