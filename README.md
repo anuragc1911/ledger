@@ -125,7 +125,7 @@ Google can't read text messages on your phone. Most banks send the same alert by
 | Goals | `Target amount`, `Target date`, `Saved so far` |
 | Debts / Debt payments | money you owe or are owed, with deadlines and part-payments |
 | History | net worth at each month end. It fills itself in whenever you open the app, so don't edit it. |
-| Categories | every category with its emoji and Group |
+| Categories | every category with its Group (the app draws its own icons; your own categories show their first letter) |
 | Budgets | monthly limit per category |
 | Rules | keyword → category for imported emails |
 | Settings | your profile and targets (age, take-home, FI multiple, return, inflation, insurance covers), currency, Gmail search |

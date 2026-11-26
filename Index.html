@@ -464,6 +464,13 @@ dialog.sheet::backdrop{background:rgba(11,11,15,.32)}
   .big{font-size:48px}
   .kpi b{font-size:26px}
 }
+.ico{width:18px;height:18px;display:block;color:var(--ink-2)}
+.mono{font-weight:600;font-size:13px;color:var(--ink-2);line-height:1}
+.crow .em,.brow .em,.catrow .em{display:grid;place-items:center}
+.cbtn i{display:grid;place-items:center;height:22px}
+.cbtn i .ico{width:20px;height:20px}
+.cbtn[aria-pressed=true] .ico,.cbtn[aria-pressed=true] .mono{color:var(--ink)}
+.cbtn i .mono{font-size:15px}
 </style>
 </head>
 <body>
@@ -763,14 +770,10 @@ dialog.sheet::backdrop{background:rgba(11,11,15,.32)}
     <div class="grab"></div>
     <div class="shh"><h3 id="catTitle">New category</h3><button type="button" class="ib" data-close aria-label="Close">✕</button></div>
     <div class="seg" id="catTypeSeg"><button type="button" data-v="expense">Expense</button><button type="button" data-v="income">Income</button></div>
-    <div style="display:grid;grid-template-columns:72px 1fr;gap:8px">
-      <input class="fld emo" id="cEmoji" placeholder="🏷️" maxlength="8" style="text-align:center;font-size:24px;padding:6px" aria-label="Icon">
-      <input class="fld" id="cName" placeholder="Name, e.g. Pets" maxlength="30" aria-label="Category name" autocomplete="off">
-    </div>
+    <input type="hidden" id="cEmoji">
+    <input class="fld" id="cName" placeholder="Name, e.g. Pets" maxlength="30" aria-label="Category name" autocomplete="off">
     <span class="lbl2">Counts as</span>
     <div class="chips wrapc" id="cGroup" style="margin-bottom:12px"></div>
-    <span class="lbl2">Pick an icon</span>
-    <div class="chips wrapc" id="emojiPick" style="margin-bottom:12px"></div>
     <div class="err" id="cErr" role="alert"></div>
     <button class="btn primary">Create category</button>
   </form>
@@ -938,7 +941,6 @@ let GMAP = new Map(), EMAP = new Map();
 function indexCats(){ GMAP = new Map(); EMAP = new Map();
   for (const t of ["expense", "income"]) for (const [n, e, g] of cats()[t]) { GMAP.set(t + "|" + n, g); EMAP.set(n, e); } }
 const groupOf = t => GMAP.get(t.type + "|" + t.category) || (t.type === "income" ? "Income" : "Want");
-const icon = c => EMAP.get(c) || "🏷️";
 function catList(type){
   const base = cats()[type].map(x => x[0]);
   const extra = new Set(S.txns.filter(t => t.type === type).map(t => t.category));
@@ -958,6 +960,45 @@ function dueHTML(d){
   return `<span class="due">Due ${fmtShort(d.due)}</span>`;
 }
 function niceStep(v){ if (v <= 0) return 1; const e = 10 ** Math.floor(Math.log10(v)), f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+
+/* line icons (drawn as SVG, so they work in every browser; emoji don't) */
+const IP = {
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  cart: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3H5l2.6 12.2a1.5 1.5 0 0 0 1.5 1.2h8.5a1.5 1.5 0 0 0 1.5-1.1L21 7H6"/>',
+  food: '<path d="M5 3v8a2 2 0 0 0 4 0V3"/><path d="M7 13v8"/><path d="M17 21V3c-2.2 1.2-3.5 3.6-3.5 6.5V13H17"/>',
+  car: '<path d="M5 17H3v-5l2.2-5.2A2 2 0 0 1 7 5.5h10a2 2 0 0 1 1.8 1.3L21 12v5h-2"/><path d="M3 12h18"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  heart: '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 22l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/>',
+  shield: '<path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/>',
+  cap: '<path d="M22 9 12 4 2 9l10 5 10-5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
+  bank: '<path d="M3 21h18"/><path d="M5 21V10M9.5 21V10M14.5 21V10M19 21V10"/><path d="M2 10 12 3l10 7z"/>',
+  bag: '<path d="M5 7h14l-1 14H6z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
+  film: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+  plane: '<path d="M2 16.5 22 9l-3.5-1.5L13 9.5 7 4H5l3.5 6.5L5 12l-2-1.5H1.5L3 14z"/><path d="M3 21h18"/>',
+  repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  trend: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+  swap: '<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+  box: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+  case: '<rect x="2.5" y="7" width="19" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M2.5 13h19"/>',
+  laptop: '<rect x="4" y="4" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v9H5v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+  card: '<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6.5 15h3"/>',
+  phone: '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  cash: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+  receipt: '<path d="M5 2v20l2.5-1.5L10 22l2-1.5 2 1.5 2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5z"/><path d="M9 8h6M9 12h6"/>',
+  inbound: '<path d="M17 7 7 17"/><path d="M17 17H7V7"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+};
+const CAT_ICON = {"Housing": "home", "Groceries": "cart", "Food & dining": "food", "Transport": "car", "Utilities": "bolt", "Health": "heart", "Insurance": "shield",
+  "Education": "cap", "Loan EMI": "bank", "Shopping": "bag", "Entertainment": "film", "Travel": "plane", "Subscriptions": "repeat", "Investing": "trend",
+  "Transfers": "swap", "Transfer in": "swap", "Other": "box", "Salary": "case", "Freelance": "laptop", "Investments": "trend", "Gifts": "gift", "Refunds": "undo", "Other income": "plus"};
+const svgI = k => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IP[k] || IP.box}</svg>`;
+/** a category's icon: a line icon for the built-in ones, the first letter for your own */
+const icon = c => CAT_ICON[c] ? svgI(CAT_ICON[c]) : `<span class="mono" aria-hidden="true">${esc(String(c || "?").trim().charAt(0).toUpperCase())}</span>`;
+const ACCT_ICON = {"Bank account": "bank", "Debit card": "card", "Credit card": "card", "UPI / wallet": "phone", "Cash": "cash"};
+const acctIcon = type => svgI(ACCT_ICON[type] || "bank");
 
 /* ---------------- periods ---------------- */
 const PERIODS = [["month", "This month"], ["last", "Last month"], ["l3", "Last 3 months"], ["l6", "Last 6 months"], ["ytd", "This year"], ["l12", "Last 12 months"], ["all", "All time"]];
@@ -1276,9 +1317,9 @@ function renderOverview(){
   const soon = w.open.filter(d => d.due && daysUntil(d.due) <= 30).sort(byDue);
   const goals = S.goals.slice().sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999")).slice(0, 3);
   $("#upcoming").innerHTML = `<div class="ch"><h2>Coming up</h2><span class="sp"></span><button class="link" data-go="wealth">Wealth</button></div>`
-    + (soon.length ? soon.map(d => `<button class="rowl" data-debt="${esc(d.id)}"><span class="ic">${d.direction === "owe" ? "🧾" : "🤝"}</span><span class="mn"><b>${esc(d.source)}</b><small>${dueHTML(d)}</small></span><span class="rt"><b class="num">${money(remaining(d))}</b><small>${d.direction === "owe" ? "you owe" : "owed to you"}</small></span></button>`).join("") : `<p class="note" style="margin:0 0 6px">No debts due in the next 30 days.</p>`)
+    + (soon.length ? soon.map(d => `<button class="rowl" data-debt="${esc(d.id)}"><span class="ic">${svgI(d.direction === "owe" ? "receipt" : "inbound")}</span><span class="mn"><b>${esc(d.source)}</b><small>${dueHTML(d)}</small></span><span class="rt"><b class="num">${money(remaining(d))}</b><small>${d.direction === "owe" ? "you owe" : "owed to you"}</small></span></button>`).join("") : `<p class="note" style="margin:0 0 6px">No debts due in the next 30 days.</p>`)
     + (w.cardDue > 0 ? `<div class="kv"><span>Credit card dues</span><b class="num">${money(w.cardDue)}</b></div>` : "")
-    + goals.map(x => `<div class="kv"><span>🎯 ${esc(x.name)}${x.date ? ` · ${fmtShort(x.date)}` : ""}</span><b class="num">${pct(Math.min(1, x.saved / x.target))}</b></div>`).join("");
+    + goals.map(x => `<div class="kv"><span>${esc(x.name)}${x.date ? ` · ${fmtShort(x.date)}` : ""}</span><b class="num">${pct(Math.min(1, x.saved / x.target))}</b></div>`).join("");
 }
 
 function renderSpending(){
@@ -1350,13 +1391,13 @@ function renderWealth(){
   // goals
   $("#goalCard").innerHTML = `<div class="ch"><h2>Goals</h2><span class="sp"></span><button class="link" id="addGoal">+ Add</button></div>`
     + (S.goals.length ? S.goals.map(g => { const left = Math.max(0, g.target - g.saved), m = g.date ? Math.max(0, daysUntil(g.date) / 30.44) : null;
-      return `<button class="rowl" data-goal="${esc(g.id)}" style="display:block"><div style="display:flex;gap:10px"><span class="mn"><b>🎯 ${esc(g.name)}</b><small>${g.date ? `by ${fmtShort(g.date)}` : "no date"}${left > 0 && m ? ` · ${money(left / Math.max(1, m))} a month to get there` : ""}</small></span><span class="rt"><b class="num">${money(g.saved)}</b><small class="num">of ${money(g.target)}</small></span></div>
+      return `<button class="rowl" data-goal="${esc(g.id)}" style="display:block"><div style="display:flex;gap:10px"><span class="mn"><b>${esc(g.name)}</b><small>${g.date ? `by ${fmtShort(g.date)}` : "no date"}${left > 0 && m ? ` · ${money(left / Math.max(1, m))} a month to get there` : ""}</small></span><span class="rt"><b class="num">${money(g.saved)}</b><small class="num">of ${money(g.target)}</small></span></div>
         <div class="pbar"><i style="width:${Math.min(100, g.saved / g.target * 100)}%"></i></div></button>`; }).join("")
       : `<div class="hint">Add a goal with a target and a date to see how much it needs each month.</div>`);
   // accounts & cards
   $("#acctCard").innerHTML = `<div class="ch"><h2>Accounts &amp; cards</h2><span class="sp"></span><small>${w.banks.length} account${w.banks.length === 1 ? "" : "s"} · ${w.cards.length} credit card${w.cards.length === 1 ? "" : "s"}</small><button class="link" id="addAcct">+ Add</button></div>`
     + (S.accounts.length ? S.accounts.map((a, i) => { const isCC = a.type === "Credit card", u = isCC && a.limit ? Math.max(0, a.balance || 0) / a.limit : null;
-      return `<button class="rowl" data-acct="${i}" style="display:block"><div style="display:flex;gap:10px;align-items:center"><span class="ic">${(ACCT_TYPES.find(t => t[0] === a.type) || ACCT_TYPES[0])[1]}</span><span class="mn"><b>${esc(a.name)}</b><small>${esc(a.type)}${a.last4 ? " ••" + esc(a.last4) : ""}${a.purpose ? " · " + esc(a.purpose) : ""}${a.updated ? " · " + fmtShort(a.updated) : ""}</small></span>
+      return `<button class="rowl" data-acct="${i}" style="display:block"><div style="display:flex;gap:10px;align-items:center"><span class="ic">${acctIcon(a.type)}</span><span class="mn"><b>${esc(a.name)}</b><small>${esc(a.type)}${a.last4 ? " ••" + esc(a.last4) : ""}${a.purpose ? " · " + esc(a.purpose) : ""}${a.updated ? " · " + fmtShort(a.updated) : ""}</small></span>
         <span class="rt"><b class="num">${a.balance === null || a.balance === undefined ? "–" : money(a.balance)}</b><small class="num">${isCC ? (a.limit ? `${pct(u)} of ${money(a.limit, {compact: true})}` : "due") : "balance"}</small></span></div>
         ${u !== null ? `<div class="pbar" style="margin-left:48px"><i style="width:${Math.min(100, u * 100)}%;${u > .5 ? "background:var(--critical)" : ""}"></i><span class="mark" style="left:30%"></span></div>` : ""}</button>`; }).join("")
       + `<p class="note" style="margin:8px 0 0">For a credit card, the balance is what you owe on it now. The tick marks 30% utilization.</p>`
@@ -1464,7 +1505,7 @@ function renderSettings(){
   if (!$("#profForm").contains(document.activeElement)) $("#profRows").innerHTML = PROFILE_FIELDS.map(([k, l, u]) => `<div class="srow"><div class="t"><b>${l}</b><small>${u}</small></div>`
     + (k === "dependents" ? `<select class="plain" data-p="${k}"><option${P[k] !== "Yes" ? " selected" : ""}>No</option><option${P[k] === "Yes" ? " selected" : ""}>Yes</option></select>`
       : `<input class="in num" data-p="${k}" inputmode="decimal" value="${P[k] === null || P[k] === undefined ? "" : P[k]}" placeholder="${k === "income" ? money(baseIncome().v) : ""}">`) + `</div>`).join("");
-  $("#catRows").innerHTML = ["expense", "income"].map(t => `<div class="igroup" style="margin-top:${t === "income" ? 14 : 0}px">${t === "expense" ? "Expense" : "Income"}</div>` + cats()[t].map(([n, e, g]) => `<div class="catrow"><span class="em">${esc(e)}</span><b style="font-weight:550;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n)}</b>
+  $("#catRows").innerHTML = ["expense", "income"].map(t => `<div class="igroup" style="margin-top:${t === "income" ? 14 : 0}px">${t === "expense" ? "Expense" : "Income"}</div>` + cats()[t].map(([n, e, g]) => `<div class="catrow"><span class="em">${icon(n)}</span><b style="font-weight:550;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n)}</b>
     <select class="plain" data-cg="${esc(n)}" data-type="${t}" aria-label="Group for ${esc(n)}">${GROUPS[t].map(x => `<option value="${x}"${x === g ? " selected" : ""}>${GROUP_LABEL[x]}</option>`).join("")}</select>
     ${/^other( income)?$/i.test(n) ? "<span></span>" : `<button class="xbtn" data-delcat="${esc(n)}" data-type="${t}" aria-label="Delete ${esc(n)}">✕</button>`}</div>`).join("")).join("");
 }
@@ -1669,7 +1710,7 @@ $("#dDel").onclick = async () => {
 
 /* ---------------- accounts & cards ---------------- */
 const adlg = $("#acctDlg");
-$("#aType").innerHTML = ACCT_TYPES.map(t => `<button type="button" class="chip" data-t="${t[0]}">${t[1]} ${t[0]}</button>`).join("");
+$("#aType").innerHTML = ACCT_TYPES.map(t => `<button type="button" class="chip" data-t="${t[0]}">${t[0]}</button>`).join("");
 $("#aPurpose").innerHTML = ["", ...PURPOSES.filter(p => p !== "Long term" && p !== "Retirement")].map(p => `<button type="button" class="chip" data-p="${p}">${p || "None"}</button>`).join("");
 function setAcctType(t){ V.acctType = t; $$("#aType .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t === t))); const cc = t === "Credit card";
   $("#aLimBox").hidden = !cc; $("#aPurposeBox").hidden = cc; $("#aBalLbl").textContent = cc ? "Amount owed now" : "Balance now"; }
@@ -1760,8 +1801,6 @@ $("#gDel").onclick = async () => { const g = S.goals.find(x => x.id === V.goalEd
 /* ---------------- categories ---------------- */
 const cdlg = $("#catDlg");
 const EMOJIS = ["🐶","👶","🎮","💇","🏋️","🍺","☕","🚗","🏍️","📱","🧾","🏦","💳","🎓","🧹","🎉","⛽","🅿️","🧸","❤️","🙏","🪴","🛠️","💼"];
-$("#emojiPick").innerHTML = EMOJIS.map(e => `<button type="button" class="chip emo" data-e="${e}" style="font-size:18px;padding:5px 9px">${e}</button>`).join("");
-$("#emojiPick").onclick = e => { const b = e.target.closest(".chip"); if (b) $("#cEmoji").value = b.dataset.e; };
 function setCatType(t){ V.catType = t; $$("#catTypeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === t)));
   if (!GROUPS[t].includes(V.catGroup)) V.catGroup = t === "income" ? "Income" : "Want";
   $("#cGroup").innerHTML = GROUPS[t].map(g => `<button type="button" class="chip" data-g="${g}" aria-pressed="${g === V.catGroup}">${GROUP_LABEL[g]}</button>`).join(""); }
