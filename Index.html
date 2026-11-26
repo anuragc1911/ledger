@@ -181,6 +181,33 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
 .frow input{border:1px solid var(--border);background:var(--page);border-radius:12px;padding:11px 12px;font-size:16px;width:100%;min-width:0}
 .err{color:var(--bad-text);font-size:13.5px;min-height:18px;margin-bottom:6px}
 
+/* debts */
+.dsum{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dsum div span{display:block;font-size:12.5px;color:var(--muted)}
+.dsum div b{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.drow{display:block;width:100%;text-align:left;border:0;background:none;padding:13px 14px;border-top:1px solid var(--grid)}
+.drow:first-child{border-top:0}
+.drow:active{background:var(--hover)}
+.drow .l1{display:flex;align-items:baseline;gap:8px}
+.drow .l1 b{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drow .l1 .rem{font-weight:650;white-space:nowrap}
+.drow .l2{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--muted);margin-top:3px}
+.drow .pbar{height:6px;margin-top:8px}
+.due{white-space:nowrap}
+.due.over{color:var(--bad-text);font-weight:650}
+.due.soon{color:var(--ink);font-weight:650}
+.pay{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--grid);font-size:14px}
+.pay:first-child{border-top:0}
+.pay > span:first-child{flex:1;color:var(--ink-2)}
+.pay b{font-weight:600}
+.payform{display:grid;grid-template-columns:1fr 140px auto;gap:8px;margin:8px 0 12px}
+.payform input{border:1px solid var(--border);background:var(--page);border-radius:10px;padding:9px 10px;font-size:16px;min-width:0;width:100%}
+.lbl2{font-size:12.5px;color:var(--ink-2);font-weight:600;margin:2px 0 6px;display:block}
+.fld{border:1px solid var(--border);background:var(--page);border-radius:12px;padding:11px 12px;font-size:16px;width:100%;margin-bottom:12px;display:block}
+.cbtn.new{border:1.5px dashed var(--axis);background:transparent}
+.xbtn{border:0;background:none;color:var(--muted);width:32px;height:32px;border-radius:8px;flex:none}
+.xbtn:active{background:var(--hover)}
+.chips.wrapc{flex-wrap:wrap;overflow:visible}
 #toast{position:fixed;left:50%;bottom:calc(90px + var(--safe-b));transform:translate(-50%,16px);background:var(--ink);color:var(--page);padding:11px 14px 11px 16px;border-radius:14px;display:flex;gap:14px;align-items:center;opacity:0;pointer-events:none;transition:.2s;z-index:60;font-size:14px;max-width:calc(100vw - 28px)}
 #toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 #toast button{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;padding:2px}
@@ -207,6 +234,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
   <!-- Dashboard -->
   <section id="v-dash" class="view" hidden>
     <div class="card sum" id="summary"></div>
+    <div class="card" id="dashDebts" style="padding-bottom:4px" hidden></div>
     <div class="card">
       <div class="ch"><h2>Last 6 months</h2><span class="sp"></span>
         <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>In</span><span><i class="sw" style="background:var(--s2)"></i>Out</span></div></div>
@@ -232,8 +260,21 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
       <button class="chip" data-f="income">Income</button>
       <button class="chip" data-f="email">✉︎ From email</button>
       <button class="chip" id="catChip" hidden></button>
+      <span id="acctChips" style="display:contents"></span>
     </div>
     <div id="txList"></div>
+  </section>
+
+  <!-- Debts -->
+  <section id="v-debts" class="view" hidden>
+    <div class="card" id="debtSum"></div>
+    <div class="chips" id="debtFilters" style="margin-bottom:10px">
+      <button class="chip" data-f="owe">I owe</button>
+      <button class="chip" data-f="owed">Owed to me</button>
+      <button class="chip" data-f="closed">Paid off</button>
+    </div>
+    <div id="debtList"></div>
+    <button class="btn primary" id="addDebt" style="margin-top:14px">Add a debt</button>
   </section>
 
   <!-- Budgets -->
@@ -259,6 +300,11 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
         <div class="t"><b>Last check</b><small id="emailLast">Never</small></div>
         <button class="btn sm" id="checkNow">Check now</button>
       </div>
+      <div class="srow">
+        <div class="t"><b>Import older emails</b><small>Bring in past alerts already in your inbox</small></div>
+        <select class="plain" id="histDays" aria-label="How far back"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="180">6 months</option><option value="365">1 year</option></select>
+        <button class="btn sm" id="histBtn">Import</button>
+      </div>
       <details>
         <summary>Which emails it reads</summary>
         <p class="note">A Gmail search. Add your bank's sender to make it stricter, e.g. <code>from:(alerts@hdfcbank.net OR credit_cards@icicibank.com)</code>. Categories come from the <b>Rules</b> tab in your sheet.</p>
@@ -268,7 +314,16 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
       <p class="note">SMS: Google can't read texts on your phone. Most banks send the same alert by email. If yours only texts, an SMS-to-Gmail forwarding app (Android) or a Shortcuts automation (iPhone) can send them to your inbox, and they'll be picked up here.</p>
     </div>
     <div class="card">
+      <div class="ch"><h2>Cards &amp; accounts</h2><span class="sp"></span><button class="link" id="newAcctBtn">+ Add</button></div>
+      <div id="acctList"></div>
+    </div>
+    <div class="card">
+      <div class="ch"><h2>Your categories</h2><span class="sp"></span><button class="link" id="newCatBtn">+ New</button></div>
+      <div id="customCats"></div>
+    </div>
+    <div class="card">
       <div class="ch"><h2>General</h2></div>
+      <div class="srow"><div class="t"><b>Budgets</b><small>Monthly limit per category</small></div><button class="btn sm" data-go="budgets">Edit</button></div>
       <div class="srow"><div class="t"><b>Currency</b></div><select class="plain" id="currency"></select></div>
       <div class="srow"><div class="t"><b>Google Sheet</b><small>All data lives here. You can edit it directly.</small></div><a class="btn sm" id="sheetLink" href="#" style="text-decoration:none">Open</a></div>
       <div class="srow"><div class="t"><b>Sync</b><small>Pull the latest from the sheet</small></div><button class="btn sm" id="refresh">Refresh</button></div>
@@ -281,7 +336,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
     <button class="tab" data-tab="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="9" rx="2"/><rect x="13.5" y="3.5" width="7" height="5" rx="2"/><rect x="13.5" y="11.5" width="7" height="9" rx="2"/><rect x="3.5" y="15.5" width="7" height="5" rx="2"/></svg>Dashboard</button>
     <button class="tab" data-tab="tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>Activity</button>
     <button class="add" id="fab" aria-label="Add transaction"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-    <button class="tab" data-tab="budgets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l6 6" stroke-linecap="round"/></svg>Budgets</button>
+    <button class="tab" data-tab="debts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h16v11H4z"/><path d="M4 11h16M7.5 15h3"/><path d="M8 7.5V5.5h8v2"/></svg>Debts</button>
     <button class="tab" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</button>
   </div>
 </nav>
@@ -293,10 +348,69 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
     <div class="seg" id="typeSeg"><button type="button" data-v="expense">Expense</button><button type="button" data-v="income">Income</button></div>
     <label class="amt"><span id="sym"></span><input id="fAmt" class="num" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Amount"></label>
     <div class="cgrid" id="cgrid" role="group" aria-label="Category"></div>
+    <div id="acctPick" hidden><span class="lbl2">Paid with</span><div class="chips wrapc" id="acctChipsForm" style="margin-bottom:12px"></div></div>
     <div class="frow"><input id="fDesc" placeholder="Note (optional)" maxlength="200" autocomplete="off" aria-label="Note"><input id="fDate" type="date" aria-label="Date"></div>
     <div class="err" id="fErr" role="alert"></div>
     <button class="btn primary" id="fSave">Save</button>
     <button type="button" class="btn danger" id="fDel" hidden>Delete transaction</button>
+  </form>
+</dialog>
+
+<dialog class="sheet" id="debtDlg" aria-labelledby="debtTitle">
+  <form id="debtForm" novalidate>
+    <div class="grab"></div>
+    <div class="shh"><h3 id="debtTitle">New debt</h3><button type="button" class="ib" data-close aria-label="Close"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="seg" id="dirSeg"><button type="button" data-v="owe">I owe</button><button type="button" data-v="owed">Owed to me</button></div>
+    <label class="amt"><span class="dsym"></span><input id="dAmt" class="num" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Total amount"></label>
+    <label class="lbl2" for="dSource" id="dSourceLbl">Who do you owe?</label>
+    <input class="fld" id="dSource" list="sources" placeholder="e.g. HDFC credit card, Rahul, Car loan" maxlength="60" autocomplete="off">
+    <datalist id="sources"></datalist>
+    <label class="lbl2" for="dDue">Deadline</label>
+    <input class="fld" id="dDue" type="date" style="margin-bottom:8px">
+    <div class="chips" id="dueChips" style="margin-bottom:12px">
+      <button type="button" class="chip" data-d="7">In 1 week</button><button type="button" class="chip" data-d="30">1 month</button><button type="button" class="chip" data-d="90">3 months</button><button type="button" class="chip" data-d="">No deadline</button>
+    </div>
+    <input class="fld" id="dNote" placeholder="Note (optional), e.g. EMI 9,800 on the 5th" maxlength="200" aria-label="Note">
+    <div id="payBox" hidden>
+      <span class="lbl2">Payments</span>
+      <div id="payList"></div>
+      <div class="payform"><input id="pAmt" class="num" inputmode="decimal" placeholder="Amount paid" aria-label="Payment amount"><input id="pDate" type="date" aria-label="Payment date"><button type="button" class="btn sm" id="pAdd">Add</button></div>
+    </div>
+    <div class="err" id="dErr" role="alert"></div>
+    <button class="btn primary" id="dSave">Save</button>
+    <button type="button" class="btn danger" id="dDel" hidden>Delete debt</button>
+  </form>
+</dialog>
+
+<dialog class="sheet" id="catDlg" aria-labelledby="catTitle">
+  <form id="catForm" novalidate>
+    <div class="grab"></div>
+    <div class="shh"><h3 id="catTitle">New category</h3><button type="button" class="ib" data-close aria-label="Close"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <div class="seg" id="catTypeSeg"><button type="button" data-v="expense">Expense</button><button type="button" data-v="income">Income</button></div>
+    <div style="display:grid;grid-template-columns:72px 1fr;gap:8px">
+      <input class="fld emo" id="cEmoji" placeholder="🏷️" maxlength="8" style="text-align:center;font-size:24px;padding:6px" aria-label="Icon">
+      <input class="fld" id="cName" placeholder="Name, e.g. Pets" maxlength="30" aria-label="Category name" autocomplete="off">
+    </div>
+    <span class="lbl2">Pick an icon</span>
+    <div class="chips wrapc" id="emojiPick" style="margin-bottom:12px"></div>
+    <div class="err" id="cErr" role="alert"></div>
+    <button class="btn primary">Create category</button>
+  </form>
+</dialog>
+
+<dialog class="sheet" id="acctDlg" aria-labelledby="acctTitle">
+  <form id="acctForm" novalidate>
+    <div class="grab"></div>
+    <div class="shh"><h3 id="acctTitle">Add a card or account</h3><button type="button" class="ib" data-close aria-label="Close"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <label class="lbl2" for="aName">Name</label>
+    <input class="fld" id="aName" placeholder="e.g. HDFC Debit, ICICI Credit" maxlength="40" autocomplete="off">
+    <span class="lbl2">Type</span>
+    <div class="chips wrapc" id="aType" style="margin-bottom:12px"></div>
+    <label class="lbl2" for="aLast4">Last 4 digits of the card or account number</label>
+    <input class="fld num" id="aLast4" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off">
+    <p class="note" style="margin:-4px 0 10px">Used to match bank alert emails to this card. Only the last 4 digits, never the full number.</p>
+    <div class="err" id="aErr" role="alert"></div>
+    <button class="btn primary">Add</button>
   </form>
 </dialog>
 
@@ -322,7 +436,16 @@ const Mock = {
   key: "ledger.preview",
   db(){ let d = null; try { d = JSON.parse(localStorage.getItem(this.key)); } catch {} if (!d){ d = sampleDb(); this.put(d); } return d; },
   put(d){ localStorage.setItem(this.key, JSON.stringify(d)); },
-  getData(){ const d = this.db(); return {...d, categories: DEFAULT_CATS, sheetUrl: ""}; },
+  getData(){ const d = this.db(); const custom = d.customCategories || [];
+    return {...d, debts: d.debts || [], accounts: d.accounts || [], customCategories: custom, categories: mergeCats(custom), sheetUrl: ""}; },
+  saveDebt(x){ const d = this.db(); d.debts = d.debts || []; const i = d.debts.findIndex(y => y.id === x.id); const rec = {...x, payments: i >= 0 ? d.debts[i].payments : []};
+    if (i >= 0) d.debts[i] = rec; else d.debts.push(rec); this.put(d); return rec; },
+  deleteDebt(id){ const d = this.db(); d.debts = (d.debts || []).filter(x => x.id !== id); this.put(d); return true; },
+  addPayment(p){ const d = this.db(); const x = (d.debts || []).find(y => y.id === p.debtId); if (!x) throw new Error("Debt not found"); x.payments.push({id: p.id, date: p.date, amount: p.amount, note: ""}); this.put(d); return p; },
+  deletePayment(id){ const d = this.db(); (d.debts || []).forEach(x => x.payments = x.payments.filter(p => p.id !== id)); this.put(d); return true; },
+  addCategory(c){ const d = this.db(); d.customCategories = d.customCategories || []; d.customCategories.push(c); this.put(d); return {categories: mergeCats(d.customCategories), custom: d.customCategories}; },
+  deleteCategory(c){ const d = this.db(); d.customCategories = (d.customCategories || []).filter(x => !(x.name === c.name && x.type === c.type)); this.put(d); return {categories: mergeCats(d.customCategories), custom: d.customCategories}; },
+  saveAccounts(list){ const d = this.db(); d.accounts = list; this.put(d); return list; },
   addTxn(t){ const d = this.db(); d.txns.push({...t, source: "manual"}); this.put(d); return t; },
   restoreTxn(t){ return this.addTxn(t); },
   updateTxn(t){ const d = this.db(); const i = d.txns.findIndex(x => x.id === t.id); if (i < 0) throw new Error("Not found"); d.txns[i] = {...d.txns[i], ...t}; this.put(d); return t; },
@@ -345,7 +468,8 @@ function sampleDb(){
   for (let i = 5; i >= 0; i--){
     const base = new Date(now.getFullYear(), now.getMonth() - i, 1), M = ym(base);
     const last = i === 0 ? now.getDate() : new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
-    const add = (type, category, description, amount, day, source = "manual") => { if (day <= last) txns.push({id: uid(), type, category, description, amount, date: `${M}-${pad(day)}`, source}); };
+    const add = (type, category, description, amount, day, source = "manual") => { if (day <= last) txns.push({id: uid(), type, category, description, amount, date: `${M}-${pad(day)}`, source,
+      account: type === "income" ? "HDFC Debit" : pick(["HDFC Debit", "SBI Debit", "ICICI Credit", "ICICI Credit"])}); };
     add("income", "Salary", "NEFT SALARY ACME CORP", 95000, 1, "email");
     if (Math.random() < .4) add("income", "Freelance", "Design project", ri(8, 25) * 1000, ri(8, 25));
     add("expense", "Housing", "Rent", 28000, 2);
@@ -360,13 +484,18 @@ function sampleDb(){
     if (Math.random() < .4) add("expense", "Health", pick(["Apollo Pharmacy", "Doctor visit"]), ri(3, 20) * 100, ri(1, 28));
     if (i === 3) add("expense", "Travel", "Goa trip", 18500, 18);
   }
-  return {txns, currency: "INR", budgets: {Housing: 28000, Groceries: 8000, "Food & dining": 6000, Transport: 3500, Shopping: 5000, Entertainment: 1500, Utilities: 4000, Subscriptions: 800},
+  const dbt = (source, direction, amount, due, note, pays) => ({id: uid(), source, direction, amount, due, note, payments: pays.map(([d, a]) => ({id: uid(), date: addDays(d), amount: a, note: ""}))});
+  const debts = [dbt("ICICI credit card bill", "owe", 24500, addDays(6), "November statement", []),
+    dbt("Car loan", "owe", 320000, addDays(19), "EMI 9,800 on the 15th", [[-41, 9800], [-11, 9800]]),
+    dbt("Rahul", "owed", 3000, addDays(-4), "Concert tickets", [[-10, 1000]])];
+  const accounts = [{name: "HDFC Debit", type: "Debit card", last4: "1234"}, {name: "SBI Debit", type: "Debit card", last4: "5678"}, {name: "ICICI Credit", type: "Credit card", last4: "4005"}];
+  return {txns, debts, accounts, customCategories: [{name: "Pets", type: "expense", emoji: "🐶"}], currency: "INR", budgets: {Housing: 28000, Groceries: 8000, "Food & dining": 6000, Transport: 3500, Shopping: 5000, Entertainment: 1500, Utilities: 4000, Subscriptions: 800},
     email: {on: true, query: 'newer_than:7d (debited OR credited OR spent)', lastCheck: "", lastResult: ""}};
 }
 
 /* ---------------- state ---------------- */
 let S = null;
-const V = {tab: "dash", month: thisMonth(), filter: "all", cat: null, q: "", editing: null, type: "expense", selCat: null};
+const V = {tab: "dash", month: thisMonth(), filter: "all", cat: null, acct: null, q: "", editing: null, type: "expense", selCat: null, txAcct: "", debtF: "owe", debtEditing: null, dir: "owe", catType: "expense", catFromTx: false, acctType: "Debit card"};
 const CACHE = "ledger.cache.v1";
 const cache = () => { try { localStorage.setItem(CACHE, JSON.stringify(S)); } catch {} };
 
@@ -409,6 +538,30 @@ function dayLabel(iso){
   const [a, b, c] = iso.split("-").map(Number); return new Date(a, b - 1, c).toLocaleDateString(undefined, {weekday: "short", day: "numeric", month: "short"});
 }
 const errMsg = e => (e && e.message) || String(e);
+const parseAmt = v => Math.round(parseFloat(String(v).replace(/,/g, "").replace(/[^\d.]/g, "")) * 100) / 100;
+function addDays(n){ const d = new Date(); d.setDate(d.getDate() + n); return ym(d) + "-" + pad(d.getDate()); }
+function daysUntil(iso){ const [y, m, d] = iso.split("-").map(Number); const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(y, m - 1, d) - t) / 86400000); }
+function fmtShort(iso){ const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, {day: "numeric", month: "short", ...(y !== new Date().getFullYear() ? {year: "numeric"} : {})}); }
+function mergeCats(custom){
+  const merge = (base, type) => { const names = new Set(base.map(c => c[0].toLowerCase()));
+    const extra = (custom || []).filter(c => c.type === type && !names.has(c.name.toLowerCase())).map(c => [c.name, c.emoji]);
+    return [...base.slice(0, -1), ...extra, base[base.length - 1]]; };
+  return {expense: merge(DEFAULT_CATS.expense, "expense"), income: merge(DEFAULT_CATS.income, "income")};
+}
+const ACCT_TYPES = [["Debit card", "💳"], ["Credit card", "💳"], ["Bank account", "🏦"], ["UPI / wallet", "📱"], ["Cash", "💵"]];
+const acctIcon = a => (ACCT_TYPES.find(t => t[0] === a.type) || ACCT_TYPES[0])[1];
+const paidOf = d => d.payments.reduce((a, p) => a + p.amount, 0);
+const remaining = d => Math.max(0, Math.round((d.amount - paidOf(d)) * 100) / 100);
+const byDue = (a, b) => (a.due || "9999").localeCompare(b.due || "9999");
+function dueHTML(d){
+  if (remaining(d) <= 0) return `<span class="due">✓ Paid off</span>`;
+  if (!d.due) return `<span class="due">No deadline</span>`;
+  const n = daysUntil(d.due);
+  if (n < 0) return `<span class="due over">⚠ Overdue by ${-n} day${n === -1 ? "" : "s"}</span>`;
+  if (n === 0) return `<span class="due over">⚠ Due today</span>`;
+  if (n <= 7) return `<span class="due soon">⏰ Due in ${n} day${n === 1 ? "" : "s"}</span>`;
+  return `<span class="due">Due ${fmtShort(d.due)}</span>`;
+}
 
 /* ---------------- status, toast ---------------- */
 let pending = 0, stT;
@@ -428,13 +581,14 @@ $("#toastBtn").onclick = () => { $("#toast").classList.remove("on"); if (toFn) t
 /* ---------------- render ---------------- */
 function render(){
   if (!S) return;
+  S.debts = S.debts || []; S.accounts = S.accounts || []; S.customCategories = S.customCategories || [];
   $("#loading").hidden = true;
   $("#mLabel").textContent = mName(V.month);
   $("#next").disabled = V.month >= thisMonth();
-  $("#title").textContent = {dash: "Ledger", tx: "Activity", budgets: "Budgets", settings: "Settings"}[V.tab];
+  $("#title").textContent = {dash: "Ledger", tx: "Activity", debts: "Debts", budgets: "Budgets", settings: "Settings"}[V.tab];
   $$(".view").forEach(v => v.hidden = v.id !== "v-" + V.tab);
   $$(".tab").forEach(b => b.setAttribute("aria-current", b.dataset.tab === V.tab ? "page" : "false"));
-  ({dash: renderDash, tx: renderTx, budgets: renderBudgets, settings: renderSettings})[V.tab]();
+  ({dash: renderDash, tx: renderTx, debts: renderDebts, budgets: renderBudgets, settings: renderSettings})[V.tab]();
 }
 
 function renderDash(){
@@ -454,6 +608,7 @@ function renderDash(){
     <div class="split num"><div><span>Income</span><b>${money(t.inc)}</b></div>
     <div><span>Net saved${t.inc ? ` · ${Math.round(net / t.inc * 100)}%` : ""}</span><b class="${net < 0 ? "neg" : net > 0 ? "pos" : ""}">${money(net, {sign: true})}</b></div></div>`;
   renderTrend();
+  renderDashDebts();
 
   const rows = catList("expense").map(c => ({c, s: t.by[c] || 0, b: S.budgets[c] || 0, n: t.n[c] || 0})).filter(r => r.s > 0).sort((a, b) => b.s - a.s);
   if (!rows.length) $("#cats").innerHTML = `<div class="empty">No spending in ${mName(V.month, "long", false)} yet.</div>`;
@@ -500,15 +655,16 @@ const byDate = (a, b) => b.date.localeCompare(a.date);
 function txRow(t){
   const title = t.description || t.category;
   return `<button class="tx" data-id="${esc(t.id)}"><span class="ic">${icon(t.category)}</span>
-    <span class="mn"><b>${esc(title)}</b><small>${esc(t.description ? t.category : dayLabel(t.date))}${t.source === "email" ? `<span class="tag">EMAIL</span>` : ""}</small></span>
+    <span class="mn"><b>${esc(title)}</b><small>${esc(t.description ? t.category : dayLabel(t.date))}${t.account ? " · " + esc(t.account) : ""}${t.source === "email" ? `<span class="tag">EMAIL</span>` : ""}</small></span>
     <span class="am num ${t.type}">${t.type === "income" ? "+" : "−"}${money(t.amount)}</span></button>`;
 }
 
 function renderTx(){
   $$("#txFilters .chip[data-f]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === V.filter && !V.cat)));
   $("#catChip").hidden = !V.cat; if (V.cat){ $("#catChip").textContent = `${icon(V.cat)} ${V.cat}  ✕`; $("#catChip").setAttribute("aria-pressed", "true"); }
+  $("#acctChips").innerHTML = S.accounts.map(a => `<button class="chip" data-acct="${esc(a.name)}" aria-pressed="${V.acct === a.name}">${acctIcon(a)} ${esc(a.name)}</button>`).join("");
   const q = V.q.trim().toLowerCase();
-  const list = S.txns.filter(t => t.date.startsWith(V.month)
+  const list = S.txns.filter(t => t.date.startsWith(V.month) && (!V.acct || t.account === V.acct)
     && (V.cat ? t.category === V.cat : V.filter === "all" || (V.filter === "email" ? t.source === "email" : t.type === V.filter))
     && (!q || (t.description + " " + t.category).toLowerCase().includes(q))).sort(byDate);
   if (!list.length){ $("#txList").innerHTML = `<div class="empty">${S.txns.length ? `Nothing here for ${mName(V.month, "long")}.` : "No transactions yet. Tap + to add one."}</div>`; return; }
@@ -535,6 +691,10 @@ function renderSettings(){
   const cs = $("#currency"); if (!cs.options.length) cs.innerHTML = CURRENCIES.map(c => `<option>${c}</option>`).join("");
   cs.value = S.currency;
   $("#sheetLink").hidden = !S.sheetUrl; if (S.sheetUrl) $("#sheetLink").href = S.sheetUrl;
+  $("#acctList").innerHTML = S.accounts.length ? S.accounts.map((a, i) => `<div class="srow"><span class="emo" style="font-size:20px">${acctIcon(a)}</span><div class="t"><b>${esc(a.name)}</b><small>${esc(a.type)}${a.last4 ? " · ••" + esc(a.last4) : ""}</small></div><button class="xbtn" data-delacct="${i}" aria-label="Remove ${esc(a.name)}">✕</button></div>`).join("")
+    : `<p class="note" style="margin:0">Add your cards with their last 4 digits. Email alerts are matched to the right card, and you can filter Activity by card.</p>`;
+  $("#customCats").innerHTML = S.customCategories.length ? S.customCategories.map(c => `<div class="srow"><span class="emo" style="font-size:20px">${esc(c.emoji)}</span><div class="t"><b>${esc(c.name)}</b><small>${c.type === "income" ? "Income" : "Expense"}</small></div><button class="xbtn" data-delcat="${esc(c.name)}" data-type="${c.type}" aria-label="Delete ${esc(c.name)}">✕</button></div>`).join("")
+    : `<p class="note" style="margin:0">Make your own, like Pets, Kids or Side business. They show up when you add a transaction.</p>`;
 }
 
 /* ---------------- add / edit sheet ---------------- */
@@ -547,9 +707,16 @@ function openTx(id){
   $("#fDate").value = t ? t.date : todayISO();
   $("#fDel").hidden = !t; $("#fErr").textContent = ""; $("#sym").textContent = sym();
   setType(t ? t.type : V.type || "expense", t ? t.category : undefined);
+  renderAcctPick(t ? t.account || "" : (localStorage.getItem("ledger.lastAcct") || ""));
   dlg.showModal();
   if (!t) setTimeout(() => $("#fAmt").focus(), 60);
 }
+function renderAcctPick(sel){
+  if (sel && !S.accounts.some(a => a.name === sel)) sel = "";
+  V.txAcct = sel; $("#acctPick").hidden = !S.accounts.length;
+  $("#acctChipsForm").innerHTML = [{name: ""}, ...S.accounts].map(a => `<button type="button" class="chip" data-a="${esc(a.name)}" aria-pressed="${a.name === sel}">${a.name ? acctIcon(a) + " " + esc(a.name) : "Not set"}</button>`).join("");
+}
+$("#acctChipsForm").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; V.txAcct = b.dataset.a; $$("#acctChipsForm .chip").forEach(x => x.setAttribute("aria-pressed", String(x === b))); };
 function setType(type, cat){
   V.type = type;
   $$("#typeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === type)));
@@ -557,12 +724,13 @@ function setType(type, cat){
   V.selCat = cat !== undefined ? cat : localStorage.getItem("ledger.last." + type);
   if (!list.includes(V.selCat)) V.selCat = cat !== undefined ? cat : null;
   const all = V.selCat && !list.includes(V.selCat) ? [...list, V.selCat] : list;
-  $("#cgrid").innerHTML = all.map(c => `<button type="button" class="cbtn" data-c="${esc(c)}" aria-pressed="${c === V.selCat}"><i>${icon(c)}</i>${esc(c)}</button>`).join("");
+  $("#cgrid").innerHTML = all.map(c => `<button type="button" class="cbtn" data-c="${esc(c)}" aria-pressed="${c === V.selCat}"><i>${icon(c)}</i>${esc(c)}</button>`).join("")
+    + `<button type="button" class="cbtn new" data-new="1"><i>＋</i>New</button>`;
   $("#fSave").textContent = V.editing ? "Save changes" : type === "income" ? "Add income" : "Add expense";
 }
 $("#typeSeg").onclick = e => { const b = e.target.closest("button"); if (b) setType(b.dataset.v); };
-$("#cgrid").onclick = e => { const b = e.target.closest(".cbtn"); if (!b) return; V.selCat = b.dataset.c; $$("#cgrid .cbtn").forEach(x => x.setAttribute("aria-pressed", String(x === b))); $("#fErr").textContent = ""; };
-dlg.addEventListener("click", e => { if (e.target === dlg || e.target.closest("[data-close]")) dlg.close(); });
+$("#cgrid").onclick = e => { const b = e.target.closest(".cbtn"); if (!b) return; if (b.dataset.new) return openCat(V.type, true); V.selCat = b.dataset.c; $$("#cgrid .cbtn").forEach(x => x.setAttribute("aria-pressed", String(x === b))); $("#fErr").textContent = ""; };
+$$("dialog.sheet").forEach(d => d.addEventListener("click", e => { if (e.target === d || e.target.closest("[data-close]")) d.close(); }));
 
 $("#txForm").onsubmit = async e => {
   e.preventDefault();
@@ -572,8 +740,8 @@ $("#txForm").onsubmit = async e => {
   if (!V.selCat) return err("Pick a category.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err("Pick a date.");
   const editing = V.editing, old = editing && S.txns.find(x => x.id === editing);
-  const t = {id: editing || uid(), type: V.type, category: V.selCat, description: $("#fDesc").value.trim(), amount, date, source: old ? old.source : "manual"};
-  localStorage.setItem("ledger.last." + V.type, V.selCat);
+  const t = {id: editing || uid(), type: V.type, category: V.selCat, description: $("#fDesc").value.trim(), amount, date, source: old ? old.source : "manual", account: V.txAcct || ""};
+  localStorage.setItem("ledger.last." + V.type, V.selCat); if (!editing) localStorage.setItem("ledger.lastAcct", V.txAcct || "");
   const before = S.txns.slice();
   S.txns = editing ? S.txns.map(x => x.id === editing ? t : x) : [...S.txns, t];
   if (!date.startsWith(V.month)) V.month = date.slice(0, 7);
@@ -593,12 +761,168 @@ $("#fDel").onclick = async () => {
   } catch (ex) { S.txns = [...S.txns, t]; cache(); render(); toast("Couldn't delete: " + errMsg(ex)); }
 };
 
+/* ---------------- debts ---------------- */
+function debtRow(d){
+  const r = remaining(d), p = paidOf(d);
+  return `<button class="drow" data-debt="${esc(d.id)}"><div class="l1"><b>${esc(d.source)}</b><span class="rem num ${d.direction === "owed" ? "pos" : ""}">${money(r || d.amount)}</span></div>
+    <div class="l2"><span>${dueHTML(d)}</span><span class="num">${p ? `${money(p)} of ${money(d.amount)} paid` : d.direction === "owed" ? "owed to you" : "to pay"}</span></div>
+    ${p && r > 0 ? `<div class="pbar"><i style="width:${Math.min(100, p / d.amount * 100)}%"></i></div>` : ""}
+    ${d.note ? `<div class="l2"><span>${esc(d.note)}</span></div>` : ""}</button>`;
+}
+function debtTotals(){
+  const open = S.debts.filter(d => remaining(d) > 0);
+  return {open, owe: open.filter(d => d.direction === "owe").reduce((a, d) => a + remaining(d), 0), owed: open.filter(d => d.direction === "owed").reduce((a, d) => a + remaining(d), 0),
+    overdue: open.filter(d => d.due && daysUntil(d.due) < 0).length};
+}
+function renderDashDebts(){
+  const t = debtTotals(), el = $("#dashDebts");
+  el.hidden = !t.open.length; if (!t.open.length) return;
+  el.innerHTML = `<div class="ch"><h2>Debts</h2>${t.overdue ? `<span class="due over" style="font-size:13px">⚠ ${t.overdue} overdue</span>` : ""}<span class="sp"></span><button class="link" data-go="debts">All debts</button></div>
+    <div class="dsum num" style="margin-bottom:4px"><div><span>You owe</span><b>${money(t.owe)}</b></div><div><span>Owed to you</span><b class="${t.owed ? "pos" : ""}">${money(t.owed)}</b></div></div>
+    <div style="margin:0 -16px">${t.open.sort(byDue).slice(0, 3).map(debtRow).join("")}</div>`;
+}
+function renderDebts(){
+  const t = debtTotals();
+  $("#debtSum").innerHTML = `<div class="dsum num"><div><span>You owe</span><b>${money(t.owe)}</b></div><div><span>Owed to you</span><b class="${t.owed ? "pos" : ""}">${money(t.owed)}</b></div></div>`
+    + (t.overdue ? `<div class="due over" style="margin-top:10px;font-size:13px">⚠ ${t.overdue} overdue</div>` : "");
+  $$("#debtFilters .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === V.debtF)));
+  const list = S.debts.filter(d => V.debtF === "closed" ? remaining(d) <= 0 : remaining(d) > 0 && d.direction === V.debtF).sort(byDue);
+  $("#debtList").innerHTML = list.length ? `<div class="txl">${list.map(debtRow).join("")}</div>`
+    : `<div class="empty">${V.debtF === "closed" ? "Nothing paid off yet." : V.debtF === "owe" ? "You don't owe anyone right now." : "Nobody owes you money right now."}</div>`;
+}
+const ddlg = $("#debtDlg");
+function setDir(v){ V.dir = v; $$("#dirSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v))); $("#dSourceLbl").textContent = v === "owe" ? "Who do you owe?" : "Who owes you?"; }
+function openDebt(id){
+  const d = id ? S.debts.find(x => x.id === id) : null;
+  V.debtEditing = d ? d.id : null;
+  $("#debtTitle").textContent = d ? d.source : "New debt";
+  setDir(d ? d.direction : (V.debtF === "owed" ? "owed" : "owe"));
+  $("#dAmt").value = d ? d.amount : ""; $("#dSource").value = d ? d.source : ""; $("#dNote").value = d ? d.note : ""; $("#dDue").value = d ? d.due : "";
+  $$(".dsym").forEach(e => e.textContent = sym());
+  $("#sources").innerHTML = [...new Set(S.debts.map(x => x.source))].map(x => `<option value="${esc(x)}">`).join("");
+  $("#dDel").hidden = !d; $("#payBox").hidden = !d; $("#dErr").textContent = "";
+  $("#dSave").textContent = d ? "Save changes" : "Add debt";
+  if (d) renderPayments(d);
+  ddlg.showModal(); if (!d) setTimeout(() => $("#dAmt").focus(), 60);
+}
+function renderPayments(d){
+  $("#payList").innerHTML = (d.payments.length ? [...d.payments].sort((a, b) => b.date.localeCompare(a.date)).map(p => `<div class="pay"><span>${fmtShort(p.date)}</span><b class="num">${money(p.amount)}</b><button type="button" class="xbtn" data-delpay="${esc(p.id)}" aria-label="Delete payment">✕</button></div>`).join("")
+    : `<div class="pay"><span>No payments yet</span></div>`) + `<div class="pay"><span style="color:var(--ink);font-weight:600">Remaining</span><b class="num">${money(remaining(d))}</b><span class="xbtn"></span></div>`;
+  $("#pAmt").value = ""; $("#pDate").value = todayISO();
+}
+$("#dirSeg").onclick = e => { const b = e.target.closest("button"); if (b) setDir(b.dataset.v); };
+$("#dueChips").onclick = e => { const b = e.target.closest(".chip"); if (b) $("#dDue").value = b.dataset.d ? addDays(+b.dataset.d) : ""; };
+$("#debtFilters").onclick = e => { const b = e.target.closest(".chip"); if (b){ V.debtF = b.dataset.f; renderDebts(); } };
+$("#addDebt").onclick = () => openDebt();
+$("#debtForm").onsubmit = async e => {
+  e.preventDefault();
+  const amount = parseAmt($("#dAmt").value), source = $("#dSource").value.trim(), due = $("#dDue").value, err = m => { $("#dErr").textContent = m; };
+  if (!(amount > 0)) { err("Enter the total amount."); return $("#dAmt").focus(); }
+  if (!source) { err(V.dir === "owe" ? "Who do you owe?" : "Who owes you?"); return $("#dSource").focus(); }
+  const editing = V.debtEditing, old = editing && S.debts.find(x => x.id === editing);
+  const d = {id: editing || uid(), source, direction: V.dir, amount, due, note: $("#dNote").value.trim(), payments: old ? old.payments : []};
+  const before = S.debts.slice();
+  S.debts = editing ? S.debts.map(x => x.id === editing ? d : x) : [...S.debts, d];
+  V.debtF = d.direction;
+  ddlg.close(); cache(); render();
+  const {payments, ...plain} = d;
+  try { await track(api("saveDebt", plain)); cache(); } catch (ex) { S.debts = before; cache(); render(); toast("Couldn't save: " + errMsg(ex)); }
+};
+$("#pAdd").onclick = async () => {
+  const d = S.debts.find(x => x.id === V.debtEditing); if (!d) return;
+  const amount = parseAmt($("#pAmt").value), date = $("#pDate").value;
+  if (!(amount > 0)) { $("#dErr").textContent = "Enter how much was paid."; return $("#pAmt").focus(); }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { $("#dErr").textContent = "Pick the payment date."; return; }
+  $("#dErr").textContent = "";
+  const p = {id: uid(), debtId: d.id, date, amount, note: ""};
+  d.payments = [...d.payments, {id: p.id, date, amount, note: ""}]; renderPayments(d); cache(); render();
+  if (remaining(d) <= 0) toast(`${d.source} is paid off 🎉`);
+  try { await track(api("addPayment", p)); cache(); } catch (ex) { d.payments = d.payments.filter(x => x.id !== p.id); renderPayments(d); render(); toast("Couldn't save payment: " + errMsg(ex)); }
+};
+$("#payList").onclick = async e => {
+  const b = e.target.closest("[data-delpay]"); if (!b) return;
+  const d = S.debts.find(x => x.id === V.debtEditing); const p = d && d.payments.find(x => x.id === b.dataset.delpay); if (!p) return;
+  d.payments = d.payments.filter(x => x !== p); renderPayments(d); cache(); render();
+  try { await track(api("deletePayment", p.id)); } catch (ex) { d.payments.push(p); renderPayments(d); render(); toast("Couldn't delete payment: " + errMsg(ex)); }
+};
+$("#dDel").onclick = async () => {
+  const d = S.debts.find(x => x.id === V.debtEditing); if (!d) return;
+  if (!confirm(`Delete "${d.source}" and its payment history?`)) return;
+  ddlg.close(); const before = S.debts.slice(); S.debts = S.debts.filter(x => x !== d); cache(); render();
+  try { await track(api("deleteDebt", d.id)); toast("Debt deleted"); } catch (ex) { S.debts = before; cache(); render(); toast("Couldn't delete: " + errMsg(ex)); }
+};
+
+/* ---------------- your own categories ---------------- */
+const cdlg = $("#catDlg");
+const EMOJIS = ["🐶","👶","🎮","💇","🏋️","🍺","☕","🚗","🏍️","📱","🧾","🏦","💳","🎓","🧹","🎉","⛽","🅿️","🧸","❤️","🙏","🪴","🛠️","💼"];
+$("#emojiPick").innerHTML = EMOJIS.map(e => `<button type="button" class="chip emo" data-e="${e}" style="font-size:18px;padding:5px 9px">${e}</button>`).join("");
+$("#emojiPick").onclick = e => { const b = e.target.closest(".chip"); if (b) $("#cEmoji").value = b.dataset.e; };
+function setCatType(t){ V.catType = t; $$("#catTypeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === t))); }
+$("#catTypeSeg").onclick = e => { const b = e.target.closest("button"); if (b) setCatType(b.dataset.v); };
+function openCat(type, fromTx){ V.catFromTx = !!fromTx; setCatType(type); $("#cName").value = ""; $("#cEmoji").value = ""; $("#cErr").textContent = ""; cdlg.showModal(); setTimeout(() => $("#cName").focus(), 60); }
+$("#newCatBtn").onclick = () => openCat("expense", false);
+$("#catForm").onsubmit = async e => {
+  e.preventDefault();
+  const name = $("#cName").value.trim().replace(/\s+/g, " "), emoji = $("#cEmoji").value.trim() || "🏷️";
+  if (!name) { $("#cErr").textContent = "Give it a name."; return $("#cName").focus(); }
+  if (catList(V.catType).some(c => c.toLowerCase() === name.toLowerCase())) { $("#cErr").textContent = "That category already exists."; return; }
+  const c = {name, type: V.catType, emoji}, before = {cats: S.categories, custom: S.customCategories};
+  S.customCategories = [...S.customCategories, c]; S.categories = mergeCats(S.customCategories);
+  cdlg.close(); cache();
+  if (V.catFromTx && dlg.open) setType(c.type, name);
+  render();
+  try { const r = await track(api("addCategory", c)); S.categories = r.categories; S.customCategories = r.custom; cache(); toast(`Category "${name}" created`); }
+  catch (ex) { S.categories = before.cats; S.customCategories = before.custom; cache(); render(); if (dlg.open) setType(V.type); toast("Couldn't create it: " + errMsg(ex)); }
+};
+$("#customCats").onclick = async e => {
+  const b = e.target.closest("[data-delcat]"); if (!b) return;
+  const c = {name: b.dataset.delcat, type: b.dataset.type};
+  if (!confirm(`Delete the category "${c.name}"? Past transactions keep it.`)) return;
+  const before = {cats: S.categories, custom: S.customCategories};
+  S.customCategories = S.customCategories.filter(x => !(x.name === c.name && x.type === c.type)); S.categories = mergeCats(S.customCategories); cache(); render();
+  try { const r = await track(api("deleteCategory", c)); S.categories = r.categories; S.customCategories = r.custom; cache(); }
+  catch (ex) { S.categories = before.cats; S.customCategories = before.custom; render(); toast("Couldn't delete: " + errMsg(ex)); }
+};
+
+/* ---------------- cards & accounts ---------------- */
+const adlg = $("#acctDlg");
+$("#aType").innerHTML = ACCT_TYPES.map(t => `<button type="button" class="chip" data-t="${t[0]}">${t[1]} ${t[0]}</button>`).join("");
+function setAcctType(t){ V.acctType = t; $$("#aType .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t === t))); }
+$("#aType").onclick = e => { const b = e.target.closest(".chip"); if (b) setAcctType(b.dataset.t); };
+$("#newAcctBtn").onclick = () => { $("#aName").value = ""; $("#aLast4").value = ""; $("#aErr").textContent = ""; setAcctType("Debit card"); adlg.showModal(); setTimeout(() => $("#aName").focus(), 60); };
+async function saveAccounts(next, msg){
+  const before = S.accounts; S.accounts = next; cache(); render();
+  try { await track(api("saveAccounts", next)); if (msg) toast(msg); } catch (ex) { S.accounts = before; cache(); render(); toast("Couldn't save: " + errMsg(ex)); }
+}
+$("#acctForm").onsubmit = e => {
+  e.preventDefault();
+  const name = $("#aName").value.trim(), last4 = $("#aLast4").value.replace(/\D/g, "");
+  if (!name) { $("#aErr").textContent = "Give it a name, like HDFC Debit."; return $("#aName").focus(); }
+  if (S.accounts.some(a => a.name.toLowerCase() === name.toLowerCase())) { $("#aErr").textContent = "You already have one with that name."; return; }
+  if (last4 && last4.length !== 4) { $("#aErr").textContent = "Enter exactly 4 digits, or leave it empty."; return; }
+  adlg.close(); saveAccounts([...S.accounts, {name, type: V.acctType, last4}], `${name} added`);
+};
+$("#acctList").onclick = e => {
+  const b = e.target.closest("[data-delacct]"); if (!b) return;
+  const a = S.accounts[+b.dataset.delacct];
+  if (a && confirm(`Remove ${a.name}? Past transactions keep its name.`)) saveAccounts(S.accounts.filter(x => x !== a));
+};
+
+$("#histBtn").onclick = async () => {
+  const b = $("#histBtn"), days = +$("#histDays").value; b.disabled = true; b.textContent = "Importing…";
+  toast("Reading your inbox. This can take a minute or two.");
+  try { const r = await track(api("checkEmailNow", days)); S = r.data; cache(); render(); toast(r.added ? `Imported ${r.added} transaction${r.added === 1 ? "" : "s"} from the last ${days} days` : "No new transactions found in those emails"); }
+  catch (ex) { toast("Import failed: " + errMsg(ex)); }
+  finally { b.disabled = false; b.textContent = "Import"; }
+};
+
 /* ---------------- wiring ---------------- */
-$("#fab").onclick = () => openTx();
+$("#fab").onclick = () => V.tab === "debts" ? openDebt() : openTx();
 $$(".tab").forEach(b => b.onclick = () => { V.tab = b.dataset.tab; scrollTo(0, 0); render(); });
 document.addEventListener("click", e => {
   const go = e.target.closest("[data-go]"); if (go){ V.tab = go.dataset.go; scrollTo(0, 0); render(); return; }
   const row = e.target.closest(".tx[data-id]"); if (row) return openTx(row.dataset.id);
+  const dr = e.target.closest(".drow[data-debt]"); if (dr) return openDebt(dr.dataset.debt);
   const c = e.target.closest(".crow[data-cat]"); if (c){ V.cat = c.dataset.cat; V.tab = "tx"; scrollTo(0, 0); render(); }
 });
 $("#prev").onclick = () => { V.month = addMonths(V.month, -1); render(); };
@@ -606,7 +930,8 @@ $("#next").onclick = () => { V.month = addMonths(V.month, 1); render(); };
 $("#q").oninput = e => { V.q = e.target.value; renderTx(); };
 $("#txFilters").onclick = e => {
   const b = e.target.closest(".chip"); if (!b) return;
-  if (b.id === "catChip") V.cat = null; else { V.filter = b.dataset.f; V.cat = null; }
+  if (b.dataset.acct !== undefined) V.acct = V.acct === b.dataset.acct ? null : b.dataset.acct;
+  else if (b.id === "catChip") V.cat = null; else { V.filter = b.dataset.f; V.cat = null; }
   renderTx();
 };
 $("#saveBudgets").onclick = async () => {

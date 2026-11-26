@@ -51,8 +51,18 @@ It now opens from your home screen like an app.
 - **Tap any transaction** to edit or delete it. Delete has an Undo.
 - **Dashboard:** this month's spending against your budget, income, net saved, a 6-month chart, spending by category and recent transactions. Use ‹ › to change month.
 - **Activity:** search and filter by spending, income or **From email**. Tap a category on the dashboard to see only its transactions.
-- **Budgets:** set a monthly limit per category.
-- **Settings:** email import on/off, **Check now**, currency, and a link to the sheet.
+- **Debts:** track money you owe and money owed to you, each with who it's with, the total, a deadline and a note. Tap a debt to record part-payments. When the payments reach the total, it moves to **Paid off**. The dashboard shows what's overdue or due within 7 days.
+- **Budgets:** set a monthly limit per category. Open it from the dashboard or Settings.
+- **Your own categories:** tap **＋ New** in the category grid when adding a transaction, or go to Settings → Your categories. Each one gets a name, an icon, and Expense or Income.
+- **Cards & accounts:** add each card with its last 4 digits, under Settings → Cards & accounts. Manual entries get a "Paid with" picker, imported email alerts are matched to the right card, and you can filter Activity by card.
+- **Settings:** email import on/off, **Check now**, **Import older emails**, currency, and a link to the sheet.
+
+### Getting all your transactions in (several cards)
+
+1. **Turn on email alerts for every card** in each bank's app or net banking. Choose "all transactions", not just large ones.
+2. **Add each card** under Settings → Cards & accounts, with its last 4 digits.
+3. **Import your history:** go to Settings → Import older emails, pick 90 days or 1 year, and tap **Import**. One run reads up to about 600 email threads. Run it again to pick up more.
+4. From then on, new alerts arrive automatically every 15 minutes. Anything without an email alert, like cash or a friend's UPI, goes in with the **+** button.
 
 ### Email import
 
@@ -71,10 +81,26 @@ Google can't read text messages on your phone. Most banks send the same alert by
 
 The forwarded messages land in Gmail and get picked up automatically. You may need to add the forwarder's sender address to the search.
 
+### Sheet tabs
+
+| Tab | What's in it |
+|---|---|
+| Transactions | every income / expense, including the Account (card) it was paid with |
+| Budgets | monthly limit per category |
+| Debts | `Source`, `Direction` (I owe / Owed to me), `Amount`, `Due date`, `Note` |
+| Debt payments | each part-payment, linked to a debt by its ID |
+| Categories | your own categories: `Name`, `Type` (Expense/Income), `Emoji` |
+| Accounts | your cards: `Name`, `Type`, `Last 4 digits` |
+| Rules | keyword → category for imported emails |
+| Settings | currency, Gmail search, last email check |
+
 ### Editing the sheet directly
 
 You can type rows into **Transactions** yourself. You only need **Date**, **Type** (Expense/Income), **Category** and **Amount**, and the app fills in the ID. Pull new data into the app with **Settings → Refresh**, or just reopen the app.
 
 ### Updating the code later
 
-After pasting new code, go to **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy**. The URL stays the same.
+- **With [clasp](https://github.com/google/clasp)** (the Google tool used to upload the code): run `clasp push`, then `clasp update-deployment <deployment id>`.
+- **By hand:** paste the new code, then go to **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy**.
+
+Either way, the URL stays the same.

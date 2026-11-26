@@ -5,18 +5,26 @@
  *   Budgets       monthly budget per category
  *   Rules         "if the email text contains X, use category Y" for imported transactions
  *   Settings      currency, email import on/off, the Gmail search used to find bank alerts
+ *   Debts         money you owe / are owed, with deadlines ("I owe" or "Owed to me")
+ *   Debt payments part-payments against a debt
+ *   Categories    your own categories (Name, Type = Expense/Income, Emoji)
+ *   Accounts      your cards / accounts; "Last 4 digits" lets email alerts be matched to a card
  *
  * Setup is in README.md: paste this file and Index.html into Extensions > Apps Script,
  * run setup() once, then Deploy > New deployment > Web app.
  */
 
 const SHEETS = {
-  tx:       { name: 'Transactions', headers: ['ID', 'Date', 'Type', 'Category', 'Description', 'Amount', 'Source', 'Ref', 'Created'] },
+  tx:       { name: 'Transactions', headers: ['ID', 'Date', 'Type', 'Category', 'Description', 'Amount', 'Source', 'Ref', 'Created', 'Account'] },
+  accounts: { name: 'Accounts',     headers: ['Name', 'Type', 'Last 4 digits'] },
   budgets:  { name: 'Budgets',      headers: ['Category', 'Monthly budget'] },
   rules:    { name: 'Rules',        headers: ['If text contains', 'Category'] },
   settings: { name: 'Settings',     headers: ['Setting', 'Value'] },
+  debts:    { name: 'Debts',          headers: ['ID', 'Source', 'Direction', 'Amount', 'Due date', 'Note', 'Created'] },
+  payments: { name: 'Debt payments',  headers: ['ID', 'Debt ID', 'Date', 'Amount', 'Note'] },
+  cats:     { name: 'Categories',     headers: ['Name', 'Type', 'Emoji'] },
 };
-const C = { id: 0, date: 1, type: 2, category: 3, description: 4, amount: 5, source: 6, ref: 7, created: 8 };
+const C = { id: 0, date: 1, type: 2, category: 3, description: 4, amount: 5, source: 6, ref: 7, created: 8, account: 9 };
 
 const EXPENSE_CATS = [['Housing', '🏠'], ['Groceries', '🛒'], ['Food & dining', '🍽️'], ['Transport', '🚌'], ['Utilities', '💡'], ['Shopping', '🛍️'], ['Health', '💊'], ['Entertainment', '🎬'], ['Travel', '✈️'], ['Education', '📚'], ['Subscriptions', '🔁'], ['Transfers', '🔀'], ['Other', '📦']];
 const INCOME_CATS = [['Salary', '💼'], ['Freelance', '💻'], ['Investments', '📈'], ['Gifts', '🎁'], ['Refunds', '↩️'], ['Other income', '💰']];
@@ -81,16 +89,21 @@ function getData() {
         category: String(r[C.category]).trim() || (type === 'income' ? 'Other income' : 'Other'),
         description: String(r[C.description]).trim(),
         source: String(r[C.source]).trim().toLowerCase() === 'email' ? 'email' : 'manual',
+        account: String(r[C.account] || '').trim(),
       });
     });
     if (missingIds) withLock_(() => sh.getRange(2, 1, rows.length, 1).setValues(rows.map(r => [r[C.id]])));
   }
   const s = readSettings_();
+  const cats = categories_();
   return {
     txns,
+    debts: readDebts_(tz),
+    accounts: readAccounts_(),
     budgets: readBudgets_(),
     currency: s['Currency'] || guessCurrency_(),
-    categories: { expense: EXPENSE_CATS, income: INCOME_CATS },
+    categories: { expense: cats.expense, income: cats.income },
+    customCategories: cats.custom,
     email: {
       on: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'importEmails'),
       query: s['Email search'] || DEFAULT_QUERY,
@@ -106,7 +119,7 @@ function getData() {
 function addTxn(t) {
   const tx = clean_(t);
   return withLock_(() => {
-    sheet_('tx').appendRow([tx.id, tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, 'Manual', '', new Date()]);
+    sheet_('tx').appendRow([tx.id, tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, 'Manual', '', new Date(), safe_(tx.account)]);
     return tx;
   });
 }
@@ -118,6 +131,7 @@ function updateTxn(t) {
     const row = findRow_(sh, tx.id);
     if (!row) throw new Error('That transaction is no longer in the sheet. Refresh and try again.');
     sh.getRange(row, C.date + 1, 1, 5).setValues([[tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount]]);
+    sh.getRange(row, C.account + 1).setValue(safe_(tx.account));
     return tx;
   });
 }
@@ -135,7 +149,7 @@ function restoreTxn(t) {
   // Undo of a delete: put it back with its original source.
   const tx = clean_(t);
   return withLock_(() => {
-    sheet_('tx').appendRow([tx.id, tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, t.source === 'email' ? 'Email' : 'Manual', '', new Date()]);
+    sheet_('tx').appendRow([tx.id, tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, t.source === 'email' ? 'Email' : 'Manual', '', new Date(), safe_(tx.account)]);
     return tx;
   });
 }
@@ -172,35 +186,52 @@ function setEmailImport(on) {
   return !!on;
 }
 
-/** Called by the app's "Check now" button. */
-function checkEmailNow() {
-  const added = importEmails();
+/** Called by the app's "Check now" / "Import older emails" buttons. days = how far back (optional). */
+function checkEmailNow(days) {
+  const added = importEmails(Number(days) || 0);
   return { added, data: getData() };
 }
 
-/** Looks for bank / card / UPI alert emails and adds new ones to Transactions. Returns how many were added. */
-function importEmails() {
+/**
+ * Looks for bank / card / UPI alert emails and adds new ones to Transactions. Returns how many were added.
+ * days: look back this many days instead of the saved search's own window (used for importing history).
+ */
+function importEmails(days) {
+  days = typeof days === 'number' && days > 0 ? Math.min(days, 730) : 0; // the 15-min trigger passes an event object
   ensureSheets_();
   const s = readSettings_();
   const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
-  const query = String(s['Email search'] || DEFAULT_QUERY);
+  let query = String(s['Email search'] || DEFAULT_QUERY);
+  if (days) query = query.replace(/\bnewer_than:\S+/gi, '').trim() + ' newer_than:' + days + 'd';
+  const accounts = readAccounts_();
   const rules = readRules_();
+  const incomeNames = categories_().income.map(c => c[0]);
   const sh = sheet_('tx');
   const seen = new Set();
   if (sh.getLastRow() > 1) sh.getRange(2, C.ref + 1, sh.getLastRow() - 1, 1).getValues().forEach(r => r[0] && seen.add(String(r[0])));
 
   const rows = [];
   let looked = 0;
-  GmailApp.search(query, 0, 60).forEach(thread => thread.getMessages().forEach(m => {
-    const ref = 'gmail:' + m.getId();
-    if (seen.has(ref)) return;
-    seen.add(ref);
-    looked++;
-    const tx = parseAlert(m.getSubject(), messageText_(m), rules);
-    if (!tx) return;
-    rows.push([Utilities.getUuid(), Utilities.formatDate(m.getDate(), tz, 'yyyy-MM-dd'), cap_(tx.type), tx.category,
-      safe_(tx.description), tx.amount, 'Email', ref, new Date()]);
-  }));
+  const started = Date.now(), max = days ? 600 : 60, page = days ? 100 : 60;
+  outer:
+  for (let start = 0; start < max; start += page) {
+    const threads = GmailApp.search(query, start, page);
+    for (const thread of threads) {
+      if (Date.now() - started > 270000) break outer; // stay well inside Apps Script's 6-minute limit
+      for (const m of thread.getMessages()) {
+        const ref = 'gmail:' + m.getId();
+        if (seen.has(ref)) continue;
+        seen.add(ref);
+        looked++;
+        const tx = parseAlert(m.getSubject(), messageText_(m), rules, incomeNames);
+        if (!tx) continue;
+        const acct = tx.last4 ? accounts.find(a => a.last4 === tx.last4) : null;
+        rows.push([Utilities.getUuid(), Utilities.formatDate(m.getDate(), tz, 'yyyy-MM-dd'), cap_(tx.type), tx.category,
+          safe_(tx.description), tx.amount, 'Email', ref, new Date(), acct ? safe_(acct.name) : '']);
+      }
+    }
+    if (threads.length < page) break;
+  }
 
   withLock_(() => {
     if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
@@ -215,7 +246,8 @@ function importEmails() {
  * completed transaction (OTPs, statements, reminders, promos, no amount).
  * Kept free of Apps Script services so it can be tested anywhere.
  */
-function parseAlert(subject, body, rules) {
+function parseAlert(subject, body, rules, incomeNames) {
+  incomeNames = incomeNames || INCOME_NAMES;
   const text = (String(subject || '') + '\n' + String(body || '')).replace(/ /g, ' ').replace(/[ \t]+/g, ' ').slice(0, 4000);
   // Only the top of the email: bank alerts often carry promo footers.
   if (/\b(otp|one[- ]time password|verification code|statement (is|for)|amount due|minimum (amount )?due|due date|will be (debited|charged)|is due|mandate|e-?nach registration|request(ed)? money|collect request)\b/i.test(text.slice(0, 700))) return null;
@@ -252,13 +284,14 @@ function parseAlert(subject, body, rules) {
   let category = type === 'income' ? 'Other income' : 'Other';
   for (const [kw, cat] of rules || []) {
     if (!kw || !cat) continue;
-    const isIncomeCat = INCOME_NAMES.indexOf(cat) >= 0;
+    const isIncomeCat = incomeNames.indexOf(cat) >= 0;
     if (isIncomeCat !== (type === 'income')) continue;
     const k = String(kw).toLowerCase().trim();
     const re = new RegExp('(^|[^a-z0-9])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z0-9]|$)');
     if (re.test(hay)) { category = cat; break; }
   }
-  return { type, amount, description, category };
+  const card = text.match(/(?:x{2,}|\*{2,}|ending(?:\s+(?:in|with))?|a\/c(?:\s*no\.?)?|account(?:\s*no\.?)?|card(?:\s*no\.?)?)\s*[x*]*\s*(\d{4})\b/i);
+  return { type, amount, description, category, last4: card ? card[1] : '' };
 }
 
 function messageText_(m) {
@@ -267,10 +300,176 @@ function messageText_(m) {
   return t;
 }
 
+/* ------------------------------------------------------------------ debts */
+
+function saveDebt(d) {
+  if (!d || typeof d !== 'object') throw new Error('Missing debt');
+  const amount = Math.round(Number(d.amount) * 100) / 100;
+  if (!(amount > 0) || !isFinite(amount)) throw new Error('Invalid amount');
+  const source = String(d.source || '').trim().slice(0, 60);
+  if (!source) throw new Error('Missing name');
+  const due = String(d.due || '');
+  if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) throw new Error('Invalid deadline');
+  const id = /^[\w-]{6,64}$/.test(String(d.id || '')) ? String(d.id) : Utilities.getUuid();
+  const dir = d.direction === 'owed' ? 'Owed to me' : 'I owe';
+  const note = String(d.note || '').slice(0, 200);
+  return withLock_(() => {
+    const sh = sheet_('debts');
+    const row = findRow_(sh, id);
+    const vals = [safe_(source), dir, amount, due, safe_(note)];
+    if (row) sh.getRange(row, 2, 1, 5).setValues([vals]);
+    else sh.appendRow([id].concat(vals, [new Date()]));
+    return { id, source, direction: d.direction === 'owed' ? 'owed' : 'owe', amount, due, note };
+  });
+}
+
+function deleteDebt(id) {
+  id = String(id);
+  return withLock_(() => {
+    const sh = sheet_('debts');
+    const row = findRow_(sh, id);
+    if (row) sh.deleteRow(row);
+    const ps = sheet_('payments');
+    const n = ps.getLastRow() - 1;
+    if (n > 0) {
+      const ids = ps.getRange(2, 2, n, 1).getValues();
+      for (let i = n - 1; i >= 0; i--) if (String(ids[i][0]) === id) ps.deleteRow(i + 2);
+    }
+    return true;
+  });
+}
+
+function addPayment(p) {
+  if (!p || typeof p !== 'object') throw new Error('Missing payment');
+  const amount = Math.round(Number(p.amount) * 100) / 100;
+  if (!(amount > 0) || !isFinite(amount)) throw new Error('Invalid amount');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p.date))) throw new Error('Invalid date');
+  const id = /^[\w-]{6,64}$/.test(String(p.id || '')) ? String(p.id) : Utilities.getUuid();
+  return withLock_(() => {
+    if (!findRow_(sheet_('debts'), String(p.debtId))) throw new Error('That debt is no longer in the sheet. Refresh and try again.');
+    sheet_('payments').appendRow([id, String(p.debtId), p.date, amount, safe_(String(p.note || '').slice(0, 200))]);
+    return { id, debtId: String(p.debtId), date: p.date, amount };
+  });
+}
+
+function deletePayment(id) {
+  return withLock_(() => {
+    const sh = sheet_('payments');
+    const row = findRow_(sh, String(id));
+    if (row) sh.deleteRow(row);
+    return true;
+  });
+}
+
+function readDebts_(tz) {
+  const pays = {};
+  const ps = sheet_('payments');
+  if (ps.getLastRow() > 1) ps.getRange(2, 1, ps.getLastRow() - 1, 5).getValues().forEach(r => {
+    const amount = Math.abs(Number(r[3]));
+    if (!r[1] || !amount) return;
+    const k = String(r[1]);
+    (pays[k] = pays[k] || []).push({ id: String(r[0] || Utilities.getUuid()), date: toISO_(r[2], tz), amount, note: String(r[4] || '') });
+  });
+  const sh = sheet_('debts');
+  const out = [];
+  if (sh.getLastRow() < 2) return out;
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+  let missingIds = false;
+  rows.forEach(r => {
+    const amount = Math.abs(Number(String(r[3]).replace(/[^\d.-]/g, '')));
+    if (!String(r[1]).trim() || !amount) return;
+    if (!r[0]) { r[0] = Utilities.getUuid(); missingIds = true; } // rows typed straight into the sheet
+    const id = String(r[0]);
+    out.push({
+      id, source: String(r[1]).trim(), amount,
+      direction: /owed to me/i.test(String(r[2])) ? 'owed' : 'owe',
+      due: toISO_(r[4], tz), note: String(r[5] || '').trim(),
+      payments: pays[id] || [],
+    });
+  });
+  if (missingIds) withLock_(() => sh.getRange(2, 1, rows.length, 1).setValues(rows.map(r => [r[0]])));
+  return out;
+}
+
+/* ------------------------------------------------------------------ accounts / cards */
+
+function saveAccounts(list) {
+  return withLock_(() => {
+    const sh = sheet_('accounts');
+    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 3).clearContent();
+    const rows = (list || []).map(a => [safe_(String(a.name || '').trim().slice(0, 40)), String(a.type || 'Debit card').slice(0, 20), String(a.last4 || '').replace(/\D/g, '').slice(-4)])
+      .filter(r => r[0]);
+    if (rows.length) {
+      sh.getRange(2, 3, rows.length, 1).setNumberFormat('@'); // keep leading zeros
+      sh.getRange(2, 1, rows.length, 3).setValues(rows);
+    }
+    return readAccounts_();
+  });
+}
+
+function readAccounts_() {
+  const sh = sheet_('accounts');
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 3).getDisplayValues().filter(r => String(r[0]).trim())
+    .map(r => ({ name: String(r[0]).trim(), type: String(r[1]).trim() || 'Debit card', last4: String(r[2]).replace(/\D/g, '').slice(-4) }));
+}
+
+/* ------------------------------------------------------------------ your own categories */
+
+function addCategory(c) {
+  const name = String((c && c.name) || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+  if (!name) throw new Error('Give the category a name');
+  const type = c.type === 'income' ? 'income' : 'expense';
+  const emoji = String(c.emoji || '').trim().slice(0, 8) || '🏷️';
+  return withLock_(() => {
+    const cur = categories_();
+    if (cur[type].some(x => x[0].toLowerCase() === name.toLowerCase())) throw new Error('That category already exists');
+    sheet_('cats').appendRow([safe_(name), cap_(type), emoji]);
+    const after = categories_();
+    return { categories: { expense: after.expense, income: after.income }, custom: after.custom };
+  });
+}
+
+function deleteCategory(c) {
+  const name = String((c && c.name) || '').trim().toLowerCase();
+  const type = c && c.type === 'income' ? 'income' : 'expense';
+  return withLock_(() => {
+    const sh = sheet_('cats');
+    const n = sh.getLastRow() - 1;
+    if (n > 0) {
+      const rows = sh.getRange(2, 1, n, 2).getValues();
+      for (let i = n - 1; i >= 0; i--) {
+        const t = String(rows[i][1]).trim().toLowerCase() === 'income' ? 'income' : 'expense';
+        if (String(rows[i][0]).trim().toLowerCase() === name && t === type) sh.deleteRow(i + 2);
+      }
+    }
+    const after = categories_();
+    return { categories: { expense: after.expense, income: after.income }, custom: after.custom };
+  });
+}
+
+/** Built-in categories plus the ones in the Categories tab ("Other" stays last). */
+function categories_() {
+  const sh = sheet_('cats');
+  const custom = (sh && sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues() : [])
+    .filter(r => String(r[0]).trim())
+    .map(r => ({ name: String(r[0]).trim(), type: String(r[1]).trim().toLowerCase() === 'income' ? 'income' : 'expense', emoji: String(r[2]).trim() || '🏷️' }));
+  const merge = (base, type) => {
+    const names = new Set(base.map(c => c[0].toLowerCase()));
+    const extra = custom.filter(c => c.type === type && !names.has(c.name.toLowerCase())).map(c => [c.name, c.emoji]);
+    return base.slice(0, -1).concat(extra, [base[base.length - 1]]);
+  };
+  return { expense: merge(EXPENSE_CATS, 'expense'), income: merge(INCOME_CATS, 'income'), custom };
+}
+
 /* ------------------------------------------------------------------ helpers */
 
 function ensureSheets_() {
   const ss = SpreadsheetApp.getActive();
+  const existingTx = ss.getSheetByName(SHEETS.tx.name);
+  if (existingTx && existingTx.getRange(1, C.account + 1).getValue() !== 'Account') {
+    existingTx.getRange(1, C.account + 1).setValue('Account').setFontWeight('bold').setBackground('#f1f0ec');
+  }
   Object.keys(SHEETS).forEach(key => {
     const def = SHEETS[key];
     if (ss.getSheetByName(def.name)) return;
@@ -290,6 +489,15 @@ function ensureSheets_() {
     if (key === 'rules') sh.getRange(2, 1, DEFAULT_RULES.length, 2).setValues(DEFAULT_RULES);
     if (key === 'settings') sh.getRange(2, 1, 2, 2).setValues([['Currency', guessCurrency_()], ['Email search', DEFAULT_QUERY]]);
     if (key === 'budgets') sh.getRange('B2:B').setNumberFormat('#,##0.00');
+    if (key === 'debts') {
+      sh.getRange('D2:D').setNumberFormat('#,##0.00');
+      sh.getRange('E2:E').setNumberFormat('yyyy-mm-dd');
+      sh.getRange('G2:G').setNumberFormat('yyyy-mm-dd hh:mm');
+      sh.setColumnWidth(2, 200); sh.setColumnWidth(6, 240);
+      sh.getRange('C2:C').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['I owe', 'Owed to me'], true).setAllowInvalid(false).build());
+    }
+    if (key === 'payments') { sh.getRange('C2:C').setNumberFormat('yyyy-mm-dd'); sh.getRange('D2:D').setNumberFormat('#,##0.00'); }
+    if (key === 'cats') sh.getRange('B2:B').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['Expense', 'Income'], true).setAllowInvalid(false).build());
   });
 }
 
@@ -344,6 +552,7 @@ function clean_(t) {
     date, type, amount,
     category: String(t.category || (type === 'income' ? 'Other income' : 'Other')).slice(0, 40),
     description: String(t.description || '').slice(0, 200),
+    account: String(t.account || '').slice(0, 40),
   };
 }
 

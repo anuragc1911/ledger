@@ -1,2 +1,4 @@
 .DS_Store
 .claude/
+.clasp.json
+.deployment-id
