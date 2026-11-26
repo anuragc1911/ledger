@@ -3,6 +3,7 @@
 <head>
 <base target="_blank">
 <meta charset="utf-8">
+<meta name="color-scheme" content="light only">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ledger</title>
 <style>
@@ -19,16 +20,7 @@
   --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
-@media (prefers-color-scheme:dark){
-  :root{
-    color-scheme:dark;
-    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#262624; --hover:rgba(255,255,255,.06);
-    --ink:#f0efec; --ink-2:#c3c2b7; --muted:#8f8d86;
-    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.08);
-    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
-    --good-text:#0ca30c; --bad-text:#e66767; --accent:#3987e5;
-  }
-}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--page);color:var(--ink)}
 body{font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased;padding-bottom:calc(84px + var(--safe-b))}
@@ -359,16 +351,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
   --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,system-ui,sans-serif;
 }
-@media (prefers-color-scheme:dark){
-  :root{
-    --page:#0E0E10; --surface:#17171A; --surface-2:#202024; --track:#2A2A2F; --hover:rgba(255,255,255,.05);
-    --ink:#F2F2F4; --ink-2:#C9CAD0; --muted:#9A9BA3; --faint:#71727B;
-    --grid:#25252A; --axis:#36363C; --border:#25252A;
-    --s1:#4A86D0; --s2:#C97A30;
-    --good-text:#3DBB7F; --bad-text:#E07A62; --gold:#C9A25A; --gold-tint:rgba(201,162,90,.12);
-    --accent:#6A9BDA; --accent-tint:rgba(106,155,218,.12); --primary:#F2F2F4; --primary-ink:#0B0B0F;
-  }
-}
+
 body{font-size:15px;line-height:1.5;letter-spacing:-.005em}
 .top{background:color-mix(in srgb,var(--page) 90%,transparent)}
 .top h1{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;font-size:24px}
@@ -391,7 +374,9 @@ body{font-size:15px;line-height:1.5;letter-spacing:-.005em}
 .split span{color:var(--faint)}
 .split b{font-weight:600}
 .chg{background:var(--gold-tint);color:var(--gold)}
-.chg.pos,.chg.neg{color:var(--gold)}
+.chg.pos{color:var(--good-text);background:rgba(14,138,85,.1)}
+.chg.neg{color:var(--bad-text);background:rgba(179,65,47,.1)}
+.big{background:linear-gradient(120deg,#3B6FA8 0%,#1F3853 70%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;display:inline-block;padding-bottom:2px}
 
 /* indicator tiles: white cards inside the grey card */
 .itile{background:var(--page);border:0;border-radius:16px;padding:15px 14px 13px}
