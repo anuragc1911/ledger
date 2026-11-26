@@ -346,17 +346,148 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
 #toast button{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;padding:2px;white-space:nowrap}
 .skel{height:120px;border-radius:var(--r);background:linear-gradient(90deg,var(--surface) 0,var(--surface-2) 50%,var(--surface) 100%);background-size:200% 100%;animation:sk 1.2s infinite;margin-bottom:12px}
 @keyframes sk{to{background-position:-200% 0}}
+
+/* ================= Kuber skin: paper-white pages, soft grey cards, navy accent, serif titles ================= */
+:root{
+  --page:#FFFFFF; --surface:#F7F7F8; --surface-2:#F0F1F3; --track:#E6E7EA; --hover:rgba(11,11,15,.04);
+  --ink:#0B0B0F; --ink-2:#3A3A40; --muted:#62626A; --faint:#9094A0;
+  --grid:#EBEBED; --axis:#D9D9DC; --border:#EBEBED;
+  --s1:#3B6FA8; --s2:#B96D2A;
+  --good-text:#0E8A55; --bad-text:#B3412F; --gold:#A37C2E; --gold-tint:rgba(163,124,46,.1);
+  --accent:#3B6FA8; --accent-tint:rgba(59,111,168,.08); --primary:#0B0B0F; --primary-ink:#FFFFFF;
+  --r:20px;
+  --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --page:#0E0E10; --surface:#17171A; --surface-2:#202024; --track:#2A2A2F; --hover:rgba(255,255,255,.05);
+    --ink:#F2F2F4; --ink-2:#C9CAD0; --muted:#9A9BA3; --faint:#71727B;
+    --grid:#25252A; --axis:#36363C; --border:#25252A;
+    --s1:#4A86D0; --s2:#C97A30;
+    --good-text:#3DBB7F; --bad-text:#E07A62; --gold:#C9A25A; --gold-tint:rgba(201,162,90,.12);
+    --accent:#6A9BDA; --accent-tint:rgba(106,155,218,.12); --primary:#F2F2F4; --primary-ink:#0B0B0F;
+  }
+}
+body{font-size:15px;line-height:1.5;letter-spacing:-.005em}
+.top{background:color-mix(in srgb,var(--page) 90%,transparent)}
+.top h1{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;font-size:24px}
+#status{color:var(--faint)}
+.banner{background:var(--surface);color:var(--muted);border-radius:14px}
+.pbtn{background:var(--surface);border:0;border-radius:99px;padding:2px 4px}
+.pbtn .lab{font-weight:600;color:var(--ink)}
+.ib{color:var(--muted)}
+
+/* cards: flat grey paper, no borders or shadows */
+.card,.kpi{background:var(--surface);border:0;box-shadow:none;border-radius:var(--r)}
+.card h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.ch small,.note{color:var(--faint)}
+.lbl,.kpi > span,.igroup,.day{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.big{font-weight:600;letter-spacing:-.035em;color:var(--accent)}
+.kpi b{font-weight:600;letter-spacing:-.02em}
+.kpi small{color:var(--faint)}
+.meta{color:var(--muted)}
+.split{border-top-color:var(--grid)}
+.split span{color:var(--faint)}
+.split b{font-weight:600}
+.chg{background:var(--gold-tint);color:var(--gold)}
+.chg.pos,.chg.neg{color:var(--gold)}
+
+/* indicator tiles: white cards inside the grey card */
+.itile{background:var(--page);border:0;border-radius:16px;padding:15px 14px 13px}
+.itile::before{display:none}
+.itile:hover{box-shadow:0 0 0 1px var(--axis)}
+.itile .nm{color:var(--muted);font-weight:500;font-size:12.5px}
+.itile .vl{font-weight:600;font-size:23px}
+.itile .bm{color:var(--faint)}
+.badge{color:var(--muted);font-weight:600}
+.counts{color:var(--muted)}
+
+/* lists */
+.pbar,.crow .track{background:var(--track)}
+.pbar i,.crow .track i{background:var(--accent)}
+.crow:hover,button.rowl:hover,.tx:hover{background:var(--hover)}
+.crow .nm{font-weight:500}
+.crow .vl,.rowl .rt b,.tx .am{font-weight:600}
+.rowl,.kv,.tx,.srow,.brow,.catrow,.pay{border-top-color:var(--grid)}
+.rowl .ic,.tx .ic{background:var(--page);border-radius:50%}
+.rowl .mn b,.tx .mn b{font-weight:500}
+.rowl .mn small,.tx .mn small,.rowl .rt small{color:var(--faint)}
+.txl{background:var(--surface);border:0;border-radius:var(--r)}
+.tag{background:var(--page);color:var(--faint);font-weight:600}
+.kv span{color:var(--muted)}
+.kv b{font-weight:600}
+.hint{background:var(--page);color:var(--muted)}
+.dup{background:var(--surface);border:0}
+
+/* inputs & controls: soft fills, no outlines */
+.search,.fld,.frow input,input.in,select.plain,textarea,.payform input{background:var(--surface);border:1px solid transparent;border-radius:14px}
+.card input.in,.card select.plain,.card textarea{background:var(--page)}
+.search:focus,.fld:focus,.frow input:focus,input.in:focus,select.plain:focus,textarea:focus{outline:none;border-color:var(--accent)}
+.chip{background:var(--surface);border:0;color:var(--ink-2);font-weight:500}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--page)}
+.chip.warn{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warning) 80%,transparent)}
+.seg{background:var(--surface);border-radius:99px}
+.seg button{border-radius:99px;font-weight:500}
+.seg button[aria-pressed=true]{background:var(--page);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.btn{background:var(--surface);border:0;border-radius:99px;font-weight:600;color:var(--ink)}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--primary);color:var(--primary-ink);border-radius:99px}
+.btn.danger{color:var(--bad-text)}
+.link{color:var(--accent);font-weight:500}
+.cbtn{background:var(--surface);border-radius:16px;color:var(--ink-2);font-weight:500}
+.cbtn[aria-pressed=true]{border-color:var(--ink);background:var(--page);color:var(--ink)}
+.cbtn.new{border-color:var(--axis)}
+.keypad button{background:var(--surface);font-weight:500}
+.keypad button:active{background:var(--surface-2)}
+.amt input{font-weight:600;letter-spacing:-.035em}
+.amt span{font-weight:500;color:var(--faint)}
+.switch input:checked+span{background:var(--accent)}
+
+/* sheets */
+dialog.sheet{background:var(--page)}
+dialog.sheet::backdrop{background:rgba(11,11,15,.32)}
+.shh h3{font-family:var(--serif);font-weight:600;font-size:19px}
+.grab{background:var(--axis)}
+#toast{background:var(--ink);color:var(--page);border-radius:99px;padding:11px 18px}
+
+/* phone tab bar: white, ink active, lowercase labels */
+.tabs{background:color-mix(in srgb,var(--page) 94%,transparent);border-top-color:var(--border)}
+.tab{color:var(--faint);font-size:10.5px;font-weight:500;letter-spacing:.05em}
+.tab[aria-current=page]{color:var(--ink)}
+.tab svg{stroke-width:1.6}
+.add{background:var(--primary);color:var(--primary-ink);border-radius:50%;box-shadow:0 8px 20px rgba(11,11,15,.22)}
+
+/* charts */
+.chart .al{fill:var(--faint)}
+#tip{background:var(--page);border:0;box-shadow:0 8px 28px rgba(11,11,15,.14);border-radius:12px}
+
+@media (min-width:900px){
+  .side{background:var(--page);border-right:1px solid var(--border)}
+  .brand{font-family:var(--serif);font-weight:600;font-size:20px;letter-spacing:-.01em}
+  .logo{background:linear-gradient(135deg,#3B6FA8,#1F3853);border-radius:10px;font-family:var(--serif);font-weight:600}
+  .snav button{font-weight:500;color:var(--muted);border-radius:12px}
+  .snav button:hover{background:var(--surface);color:var(--ink)}
+  .snav button[aria-current=page]{background:var(--surface);color:var(--ink)}
+  .snav button svg{stroke-width:1.6}
+  .sadd{background:var(--primary);color:var(--primary-ink);border-radius:99px;box-shadow:none;font-weight:600}
+  .sfoot{color:var(--faint)}
+  .sfoot a{color:var(--muted);font-weight:500}
+  .top h1{font-size:30px}
+  .big{font-size:48px}
+  .kpi b{font-size:26px}
+}
 </style>
 </head>
 <body>
 <aside class="side" aria-label="Sections">
   <div class="brand"><span class="logo">₹</span>Ledger</div>
   <nav class="snav">
-    <button data-tab="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="9" rx="2"/><rect x="13.5" y="3.5" width="7" height="5" rx="2"/><rect x="13.5" y="11.5" width="7" height="9" rx="2"/><rect x="3.5" y="15.5" width="7" height="5" rx="2"/></svg>Overview</button>
-    <button data-tab="spending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Spending</button>
-    <button data-tab="wealth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/></svg>Wealth</button>
-    <button data-tab="activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>Activity</button>
-    <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</button>
+    <button data-tab="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="9" rx="2"/><rect x="13.5" y="3.5" width="7" height="5" rx="2"/><rect x="13.5" y="11.5" width="7" height="9" rx="2"/><rect x="3.5" y="15.5" width="7" height="5" rx="2"/></svg>overview</button>
+    <button data-tab="spending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>spending</button>
+    <button data-tab="wealth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/></svg>wealth</button>
+    <button data-tab="activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>activity</button>
+    <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>settings</button>
   </nav>
   <button class="sadd" id="addDesk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add transaction</button>
   <div class="sfoot"><a id="sideSheet" href="#" hidden>Open Google Sheet ↗</a><span>Everything is stored in your Google Sheet.</span></div>
@@ -494,11 +625,11 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.4)}
 
 <nav class="tabs" aria-label="Sections">
   <div class="wrap">
-    <button class="tab" data-tab="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="9" rx="2"/><rect x="13.5" y="3.5" width="7" height="5" rx="2"/><rect x="13.5" y="11.5" width="7" height="9" rx="2"/><rect x="3.5" y="15.5" width="7" height="5" rx="2"/></svg>Overview</button>
-    <button class="tab" data-tab="spending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Spending</button>
+    <button class="tab" data-tab="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="9" rx="2"/><rect x="13.5" y="3.5" width="7" height="5" rx="2"/><rect x="13.5" y="11.5" width="7" height="9" rx="2"/><rect x="3.5" y="15.5" width="7" height="5" rx="2"/></svg>overview</button>
+    <button class="tab" data-tab="spending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>spending</button>
     <button class="add" id="fab" aria-label="Add"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-    <button class="tab" data-tab="wealth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/></svg>Wealth</button>
-    <button class="tab" data-tab="activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>Activity</button>
+    <button class="tab" data-tab="wealth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 20V10M10 20V6M15 20v-8M20 20V4"/></svg>wealth</button>
+    <button class="tab" data-tab="activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>activity</button>
   </div>
 </nav>
 
