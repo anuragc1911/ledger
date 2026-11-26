@@ -374,9 +374,11 @@ body{font-size:15px;line-height:1.5;letter-spacing:-.005em}
 .split span{color:var(--faint)}
 .split b{font-weight:600}
 .chg{background:var(--gold-tint);color:var(--gold)}
+.big.neg{background-image:linear-gradient(120deg,#D9533F 0%,#992C22 75%)}
+.big.pos,.big.neg{color:transparent}
 .chg.pos{color:var(--good-text);background:rgba(14,138,85,.1)}
 .chg.neg{color:var(--bad-text);background:rgba(179,65,47,.1)}
-.big{background:linear-gradient(120deg,#3B6FA8 0%,#1F3853 70%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;display:inline-block;padding-bottom:2px}
+.big{background:linear-gradient(120deg,#16A870 0%,#0A6B44 75%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;display:inline-block;padding-bottom:2px}
 
 /* indicator tiles: white cards inside the grey card */
 .itile{background:var(--page);border:0;border-radius:16px;padding:15px 14px 13px}
@@ -1243,7 +1245,7 @@ function renderOverview(){
   const h = S.history, prevNW = h.length >= 2 ? h[h.length - 2].net : null;
   const dNW = prevNW !== null ? w.net - prevNW : null;
   $("#nwCard").innerHTML = `<div class="ch" style="margin-bottom:2px"><span class="lbl">Net worth</span><span class="sp"></span>${dNW !== null ? `<span class="chg num ${dNW < 0 ? "neg" : dNW > 0 ? "pos" : ""}">${dNW >= 0 ? "▲" : "▼"} ${money(Math.abs(dNW))} since ${mName(h[h.length - 2].month, "short", false)}</span>` : ""}</div>
-    <div class="big num">${money(w.net)}</div>
+    <div class="big num ${w.net < 0 ? "neg" : "pos"}">${w.net < 0 ? "−" : ""}${money(Math.abs(w.net))}</div>
     <div class="meta num">Assets <b>${money(w.assets)}</b> · Liabilities <b>${money(w.liab)}</b></div>
     <div class="split num"><div><span>Cash</span><b>${money(w.cash, {compact: true})}</b></div><div><span>Invested</span><b>${money(w.inv, {compact: true})}</b></div><div><span>Debt &amp; card dues</span><b>${money(w.liab, {compact: true})}</b></div></div>
     <div class="chart sm hero-chart" id="nwChart" style="margin-top:14px"></div>`;
