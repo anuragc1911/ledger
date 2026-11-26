@@ -62,6 +62,16 @@ A period picker at the top (This month, Last 3 months, This year, custom dates�
 - **Activity:** every transaction. Filter by type, category, account and source (entered by you / email / statement), search, and sort. **Possible duplicates** lists pairs to merge.
 - **Settings:** your profile and targets, category groups, email import, currency.
 
+### Quick add from your phone (iPhone Back Tap)
+
+Add `?add=expense` or `?add=income` to the end of your web app URL, and the app opens straight into a new transaction. On a phone it shows a number pad and your most-used categories first. You can also prefill it, e.g. `…/exec?add=expense&amount=450&note=Lunch`.
+
+To open it by double-tapping the back of an iPhone:
+
+1. In the **Shortcuts** app, tap **+**, add the action **Open URLs**, and paste `https://script.google.com/macros/s/<your deployment id>/exec?add=expense`. Name the shortcut "Add expense".
+2. Go to **Settings → Accessibility → Touch → Back Tap → Double Tap** and choose **Add expense**.
+3. Optionally, make a second shortcut with `?add=income` and set it as **Triple Tap**.
+
 ### How things are counted
 
 Every category has a **Group** (Settings, or the Categories tab):
