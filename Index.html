@@ -785,6 +785,45 @@ body.dark .chart .al{fill:#8E8E93}
   body.dark .snav button:hover{background:rgba(255,255,255,.06)}
   body.dark .snav button[aria-current=page]{background:#2C2C2E;box-shadow:none}
 }
+
+/* ================= net worth & accounts ================= */
+:root{--c1:#007AFF;--c2:#eb6834;--c3:#1baf7a;--c4:#eda100;--c5:#e87ba4;--c6:#6250d6;--c7:#8E8E93;--c8:#AEAEB2}
+body.dark{--c1:#0A84FF;--c2:#d95926;--c3:#199e70;--c4:#c98500;--c5:#d55181;--c6:#9085e9;--c7:#8E8E93;--c8:#636366}
+.nwcard{padding:20px}
+.nwtop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.nwtop .link{font-size:15px}
+.nwchg{margin-top:-8px;color:var(--muted);font-size:14.5px}
+.nwchg span{font-weight:600}
+.nwbar{display:flex;gap:2px;height:12px;border-radius:6px;overflow:hidden;margin:16px 0 12px}
+.nwbar i{display:block;min-width:3px}
+.nwleg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.nwleg div{display:flex;align-items:center;gap:7px;min-width:0;font-size:14px}
+.nwleg i{width:9px;height:9px;border-radius:50%;flex:none}
+.nwleg span{color:var(--muted);flex:1;line-height:1.25}
+.nwleg b{font-weight:600}
+.nwowe{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--grid)}
+.nwowe span{color:var(--muted);font-size:14px}
+.nwowe b{font-weight:600;font-size:16px}
+.nwowe small{color:var(--muted);font-size:13px;margin-left:auto}
+.sigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.sig{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:var(--surface-2);border-radius:12px;padding:10px;text-align:left;color:var(--ink);min-width:0}
+.sig .dot{width:16px;height:16px;font-size:9px;margin-bottom:2px}
+.sig span{font-size:11.5px;color:var(--muted);line-height:1.2;max-width:100%}
+.sig b{font-size:15px;font-weight:600;white-space:nowrap}
+.sectot{font-size:16px;font-weight:600;margin-right:6px}
+.addl{width:28px;height:28px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:20px;line-height:1;padding:0;color:var(--accent)}
+.grp{display:flex;align-items:center;gap:8px;padding:12px 0 4px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-top:1px solid var(--grid);margin-top:4px}
+.grp:first-of-type{border-top:0}
+.grp i{width:8px;height:8px;border-radius:50%}
+.grp span{flex:1}
+.grp b{color:var(--ink);text-transform:none;letter-spacing:0}
+.invsum{color:var(--muted);font-size:14px;margin:-4px 0 4px}
+.opt{font-weight:400;color:var(--faint)}
+.sumgrid{grid-template-areas:"nw" "month" "tiles" "chart" "recent"}
+@media (min-width:900px){
+  .sumgrid{grid-template-areas:"nw recent" "month recent" "tiles recent" "chart recent"}
+  .nwleg{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 </style>
 </head>
 <body>
@@ -822,6 +861,7 @@ body.dark .chart .al{fill:#8E8E93}
   <section id="v-home" class="view" hidden>
     <div class="phead"><div class="kick"></div><h1 class="ph1">Summary</h1><p class="psub"></p><div class="pslot"></div></div>
     <div class="sumgrid">
+      <div class="card nwcard" id="sNet" style="grid-area:nw"></div>
       <div class="card sumcard" id="sMonth" style="grid-area:month"></div>
       <div class="two" id="sTiles" style="grid-area:tiles"></div>
       <div class="card" style="grid-area:chart"><div class="ch"><h2>Monthly Spending</h2></div><div class="chart sm" id="dChart"></div></div>
@@ -872,17 +912,16 @@ body.dark .chart .al{fill:#8E8E93}
   <!-- Accounts -->
   <section id="v-accounts" class="view" hidden>
     <div class="phead"><div class="kick"></div><h1 class="ph1"></h1><p class="psub"></p><div class="pslot"></div></div>
-    <div id="aSummary"></div>
+    <div class="card nwcard" id="aSummary"></div>
     <div class="grid g2">
-      <div class="col"><div class="card" id="acctCard"></div><div class="card" id="invCard"></div></div>
-      <div class="col"><div class="card" id="debtCard"></div><div class="card" id="goalCard"></div></div>
+      <div class="col"><div class="card" id="bankCard"></div><div class="card" id="invCard"></div></div>
+      <div class="col"><div class="card" id="cardCard"></div><div class="card" id="debtCard"></div><div class="card" id="goalCard"></div></div>
     </div>
     <div class="youacts">
-      <button class="pill-btn" data-go="settings">edit my numbers</button>
-      <button class="pill-btn" data-go="budgets">monthly budgets</button>
-      <a class="pill-btn" id="youSheet" href="#">open my google sheet</a>
+      <button class="pill-btn" data-go="settings">Edit My Numbers</button>
+      <button class="pill-btn" data-go="budgets">Monthly Budgets</button>
+      <a class="pill-btn" id="youSheet" href="#">Open My Google Sheet</a>
     </div>
-    <p class="foot2">everything lives in your own google sheet.<br>ledger shows numbers and benchmarks; it isn't financial advice.</p>
   </section>
 
   <!-- Budgets -->
@@ -1038,7 +1077,12 @@ body.dark .chart .al{fill:#8E8E93}
     <label class="lbl2" for="hName">Name</label>
     <input class="fld" id="hName" placeholder="e.g. Nifty 50 index fund, EPF, SBI FD" maxlength="60" autocomplete="off">
     <span class="lbl2">Type</span>
-    <div class="chips wrapc" id="hType" style="margin-bottom:12px"></div>
+    <div class="chips wrapc" id="hType" style="margin-bottom:8px"></div>
+    <input class="fld" id="hTypeOwn" placeholder="Or type your own, e.g. Bonds via Wint" maxlength="30" autocomplete="off" aria-label="Your own type" style="margin-bottom:14px">
+    <div class="f2">
+      <div><label class="lbl2" for="hUnits">Units <span class="opt">optional</span></label><input class="fld num" id="hUnits" inputmode="decimal" placeholder="e.g. 0.05" autocomplete="off"></div>
+      <div><label class="lbl2" for="hPrice">Price per unit</label><input class="fld num" id="hPrice" inputmode="decimal" placeholder="e.g. 78,00,000" autocomplete="off"></div>
+    </div>
     <div class="f2">
       <div><label class="lbl2" for="hVal">Current value</label><input class="fld num" id="hVal" inputmode="decimal" placeholder="0" autocomplete="off"></div>
       <div><label class="lbl2" for="hInv">Amount invested</label><input class="fld num" id="hInv" inputmode="decimal" placeholder="optional" autocomplete="off"></div>
@@ -1101,11 +1145,20 @@ const GROUPS = {expense: ["Need", "Want", "Debt", "Savings", "Transfer"], income
 const GROUP_LABEL = {Need: "Need", Want: "Want", Debt: "Debt / EMI", Savings: "Savings", Transfer: "Transfer (ignored)", Income: "Income"};
 const CURRENCIES = ["INR","USD","EUR","GBP","AED","SGD","AUD","CAD","JPY","CHF"];
 const ACCT_TYPES = [["Bank account","🏦"],["Debit card","💳"],["Credit card","💳"],["UPI / wallet","📱"],["Cash","💵"]];
-const HOLD_TYPES = ["Equity mutual fund","Debt mutual fund","Stocks","EPF","PPF","NPS","FD / RD","Bonds","Gold","Crypto","Real estate","Other"];
-// asset class weights per holding type (NPS is counted half equity, half fixed income)
-const CLASS_OF = {"Equity mutual fund": {Equity: 1}, "Stocks": {Equity: 1}, "NPS": {Equity: .5, "Fixed income": .5}, "Debt mutual fund": {"Fixed income": 1}, "EPF": {"Fixed income": 1}, "PPF": {"Fixed income": 1}, "FD / RD": {"Fixed income": 1}, "Bonds": {"Fixed income": 1},
-  "Gold": {Gold: 1}, "Real estate": {"Real estate": 1}, "Crypto": {Other: 1}, "Other": {Other: 1}};
-const CLASSES = [["Equity","var(--s1)"],["Fixed income","var(--s2)"],["Gold","var(--s3)"],["Real estate","var(--s4)"],["Other","var(--s5)"]];
+// Suggested investment types (any other text works too and counts as "Other").
+const HOLD_TYPES = ["Stocks","Equity mutual fund","International stocks","ESOP / RSU","Debt mutual fund","FD / RD","Bonds","EPF","PPF","NPS","Crypto","Gold","Silver","Real estate","Vehicle","Other"];
+// how each type counts in the net worth groups (NPS is counted half equity, half fixed income)
+const CLASS_OF = {"Equity mutual fund": {Equity: 1}, "Stocks": {Equity: 1}, "International stocks": {Equity: 1}, "ESOP / RSU": {Equity: 1}, "NPS": {Equity: .5, "Fixed income": .5},
+  "Debt mutual fund": {"Fixed income": 1}, "EPF": {"Fixed income": 1}, "PPF": {"Fixed income": 1}, "FD / RD": {"Fixed income": 1}, "Bonds": {"Fixed income": 1},
+  "Gold": {"Gold & silver": 1}, "Silver": {"Gold & silver": 1}, "Crypto": {Crypto: 1}, "Real estate": {Property: 1}, "Vehicle": {Property: 1}, "Other": {Other: 1}};
+// the groups, in a fixed order with fixed colours (Cash comes first in the net worth bar)
+const CLASSES = [["Equity","var(--c2)"],["Fixed income","var(--c3)"],["Gold & silver","var(--c4)"],["Property","var(--c5)"],["Crypto","var(--c6)"],["Other","var(--c7)"]];
+// your own types land in a group by keyword (e.g. "Silver bars" -> Gold & silver, "Solana" -> Crypto)
+const CLASS_KW = [[/crypto|bitcoin|btc|eth|ether|solana|sol\b|usdt|coin\b|web3|nft/i, "Crypto"], [/gold|silver|sgb|bullion|jewel/i, "Gold & silver"],
+  [/stock|share|equity|fund|etf|index|esop|rsu|smallcase|nasdaq|s&p/i, "Equity"], [/\bfd\b|deposit|bond|debt|pf\b|epf|ppf|gilt|treasury|t-bill|liquid|nps/i, "Fixed income"],
+  [/property|house|flat|land|plot|apartment|real estate|car\b|bike|vehicle/i, "Property"]];
+const classOf = type => CLASS_OF[type] || {[(CLASS_KW.find(([re]) => re.test(type || "")) || [null, "Other"])[1]]: 1};
+const mainClass = type => Object.entries(classOf(type)).sort((a, b) => b[1] - a[1])[0][0];
 const PURPOSES = ["Everyday", "Emergency fund", "Savings", "Long term", "Retirement"];
 
 /* ---------------- backend bridge (Apps Script, or a local mock for previewing) ---------------- */
@@ -1136,7 +1189,7 @@ const Mock = {
   addPayment(p){ const d = this.db(); const x = d.debts.find(y => y.id === p.debtId); if (!x) throw new Error("Debt not found"); x.payments.push({id: p.id, date: p.date, amount: p.amount, note: ""}); this.put(d); return p; },
   deletePayment(id){ const d = this.db(); d.debts.forEach(x => x.payments = x.payments.filter(p => p.id !== id)); this.put(d); return true; },
   saveAccounts(list){ const d = this.db(); d.accounts = list; this.put(d); return list; },
-  saveHolding(h){ const d = this.db(); const id = h.id || uid(); const i = d.holdings.findIndex(x => x.id === id); const rec = {...h, id}; if (i >= 0) d.holdings[i] = rec; else d.holdings.push(rec); this.put(d); return id; },
+  saveHolding(h){ const d = this.db(); const id = h.id || uid(); if (h.units > 0 && h.price > 0) h = {...h, value: Math.round(h.units * h.price * 100) / 100}; const i = d.holdings.findIndex(x => x.id === id); const rec = {...h, id}; if (i >= 0) d.holdings[i] = rec; else d.holdings.push(rec); this.put(d); return id; },
   deleteHolding(id){ const d = this.db(); d.holdings = d.holdings.filter(x => x.id !== id); this.put(d); return true; },
   saveGoal(g){ const d = this.db(); const id = g.id || uid(); const i = d.goals.findIndex(x => x.id === id); const rec = {...g, id}; if (i >= 0) d.goals[i] = rec; else d.goals.push(rec); this.put(d); return id; },
   deleteGoal(id){ const d = this.db(); d.goals = d.goals.filter(x => x.id !== id); this.put(d); return true; },
@@ -1194,7 +1247,8 @@ function sampleDb(){
     holdings: [{id: uid(), name: "Nifty 50 index fund", type: "Equity mutual fund", invested: 180000, value: 214000, purpose: "Long term", updated: t, note: "SIP 10,000"},
       {id: uid(), name: "EPF", type: "EPF", invested: null, value: 265000, purpose: "Retirement", updated: t, note: ""},
       {id: uid(), name: "SBI FD", type: "FD / RD", invested: 50000, value: 53400, purpose: "Emergency fund", updated: t, note: ""},
-      {id: uid(), name: "Digital gold", type: "Gold", invested: 20000, value: 24600, purpose: "Long term", updated: t, note: ""}],
+      {id: uid(), name: "Digital gold", type: "Gold", invested: 20000, value: 24600, purpose: "Long term", updated: t, note: ""},
+      {id: uid(), name: "Bitcoin", type: "Crypto", invested: 30000, value: 39000, units: 0.005, price: 7800000, purpose: "Long term", updated: t, note: ""}],
     goals: [{id: uid(), name: "Bike", target: 180000, date: addDays(300), saved: 45000, note: ""}, {id: uid(), name: "Trip to Japan", target: 250000, date: addDays(520), saved: 20000, note: ""}],
     profile: {age: 27, income: null, dependents: "No", savingsTarget: 20, efMonths: 6, fiMultiple: 33, returnPct: 10, inflationPct: 6, termCover: null, healthCover: 500000},
     categories: JSON.parse(JSON.stringify(FALLBACK_CATS)), currency: "INR",
@@ -1374,9 +1428,10 @@ function wealth(){
   const isEF = x => /emergency/i.test(x.purpose || "");
   const efTagged = sum(banks.filter(isEF), a => a.balance) + sum(hold.filter(isEF), h => h.value);
   const anyTagged = banks.some(isEF) || hold.some(isEF);
-  const classes = {}; hold.forEach(h => { const w = CLASS_OF[h.type] || {Other: 1}; for (const c in w) classes[c] = (classes[c] || 0) + h.value * w[c]; });
-  const investable = sum(hold.filter(h => h.type !== "Real estate" && !isEF(h)), h => h.value);
-  const equity = sum(hold.filter(h => h.type !== "Real estate" && !isEF(h)), h => h.value * ((CLASS_OF[h.type] || {}).Equity || 0));
+  const classes = {}; hold.forEach(h => { const w = classOf(h.type); for (const c in w) classes[c] = (classes[c] || 0) + h.value * w[c]; });
+  const isProp = h => mainClass(h.type) === "Property";
+  const investable = sum(hold.filter(h => !isProp(h) && !isEF(h)), h => h.value);
+  const equity = sum(hold.filter(h => !isProp(h) && !isEF(h)), h => h.value * (classOf(h.type).Equity || 0));
   const assets = cash + inv + owed, liab = cardDue + owe;
   return {banks, cards, cash, cardDue, cardLimit: sum(limited, a => a.limit), cardDueLimited: sum(limited, a => Math.max(0, a.balance || 0)), limitedCount: limited.length,
     inv, invested, investedValue, owe, owed, open, efAmount: anyTagged ? efTagged : cash, efTagged: anyTagged, classes, investable, equity, assets, liab, net: assets - liab};
@@ -1605,17 +1660,41 @@ const CAT_COLOR = {"Housing": "#5856D6", "Groceries": "#34C759", "Food & dining"
   "Insurance": "#8E8E93", "Education": "#AF52DE", "Loan EMI": "#A2845E", "Shopping": "#FF6482", "Entertainment": "#BF5AF2", "Travel": "#0A84FF", "Subscriptions": "#FFCC00",
   "Investing": "#32D74B", "Transfers": "#8E8E93", "Transfer in": "#8E8E93", "Other": "#8E8E93", "Salary": "#34C759", "Freelance": "#30D158", "Investments": "#32D74B", "Gifts": "#FF375F", "Refunds": "#64D2FF", "Other income": "#34C759"};
 const catColor = c => CAT_COLOR[c] || "#8E8E93";
+/** The net worth card: total, change since last month, what it's made of, and what you owe. */
+function netWorthCard(w, signals){
+  const h = S.history || [], prev = h.length >= 2 ? h[h.length - 2] : null, d = prev ? w.net - prev.net : null;
+  const parts = [["Cash & bank", w.cash, "var(--c1)"], ...CLASSES.map(([c, col]) => [c, w.classes[c] || 0, col]), ["Owed to you", w.owed, "var(--c8)"]].filter(x => x[1] > 0);
+  const tot = sum(parts, x => x[1]);
+  const owe = w.cardDue + w.owe;
+  const has = S.accounts.length || S.holdings.length || S.debts.length;
+  return `<div class="nwtop"><div><div class="cap2">Net Worth</div><div class="bal num ${w.net < 0 ? "out" : ""}">${w.net < 0 ? "−" : ""}${money(Math.abs(w.net))}</div>
+      <div class="nwchg num">${d === null ? `Tracking since ${mName(h.length ? h[0].month : thisMonth(), "long", false)}` : `<span class="${d >= 0 ? "in" : "out"}">${d >= 0 ? "▲" : "▼"} ${money(Math.abs(d))}</span> since ${mName(prev.month, "long", false)}`}</div></div>
+      <button class="link" data-go="accounts">Details</button></div>
+    ${tot > 0 ? `<div class="nwbar" role="img" aria-label="What your assets are made of">${parts.map(x => `<i style="flex:${x[1]};background:${x[2]}" title="${x[0]}: ${money(x[1])}"></i>`).join("")}</div>
+    <div class="nwleg num">${parts.map(x => `<div><i style="background:${x[2]}"></i><span>${x[0]}</span><b>${money(x[1], {compact: x[1] >= 1e4})}</b></div>`).join("")}</div>` : ""}
+    <div class="nwowe num"><span>You owe</span><b class="${owe ? "out" : ""}">${owe ? "−" : ""}${money(owe)}</b><small>${owe ? [w.cardDue ? `cards ${money(w.cardDue, {compact: true})}` : "", w.owe ? `loans ${money(w.owe, {compact: true})}` : ""].filter(Boolean).join(" · ") : "nothing"}</small></div>
+    ${!has ? `<div class="hint" style="margin-top:12px">Add your bank balances, investments, crypto and loans under Accounts to see where you stand.</div>` : ""}
+    ${signals || ""}`;
+}
+/** three quick signals for "where do I stand": emergency fund, savings rate this year, card use */
+function standSignals(){
+  const y = thisMonth().slice(0, 4), keep = V.period;
+  V.period = {k: "custom", from: `${y}-01-01`, to: todayISO()}; const all = indicators(); V.period = keep;
+  const pick = [["Emergency fund", "Emergency fund"], ["Savings rate", "Saving rate"], ["Credit card utilization", "Card use"]]
+    .map(([n, label]) => { const i = all.find(x => x.name === n); return i && i.value !== "–" ? {...i, label} : null; }).filter(Boolean);
+  return pick.length ? `<div class="sigs">${pick.map(i => `<button class="sig" data-go="insights"><i class="dot ${i.status}">${BADGE[i.status][0]}</i><span>${esc(i.label)}</span><b class="num">${esc(i.value)}</b></button>`).join("")}</div>` : "";
+}
 function renderHome(){
   const r = range(), f = flows(r), w = wealth(), m = V.period.m || thisMonth(), cur = m === thisMonth();
   setHead("Summary", "");
+  $("#sNet").innerHTML = netWorthCard(w, standSignals());
   const base = f.inc > 0 ? f.inc : (S.profile.income || 0), left = base - f.spend, p = base > 0 ? f.spend / base : 0;
   $("#sMonth").innerHTML = `<div class="cap2">${mName(m, "long", false)} Spending</div>
     <div class="bal num">${money(f.spend)}</div>
     ${base > 0 ? `<div class="meter ${p > 1 ? "over" : ""}"><i style="width:${Math.min(100, p * 100)}%"></i></div>
     <div class="sub2 num">${left >= 0 ? `<b>${money(left)}</b> left of ${money(base)} ${f.inc > 0 ? "income" : "expected"}` : `<b class="out">${money(-left)} over</b> your ${money(base)} income`}</div>` : `<div class="sub2">No income recorded${cur ? " yet" : ""}.</div>`}`;
-  const owe = w.cardDue + w.owe;
   $("#sTiles").innerHTML = `<button class="card tile2" data-go="activity"><span>Income</span><b class="num in">${money(f.inc)}</b></button>
-    <button class="card tile2" data-go="accounts"><span>You Owe</span><b class="num ${owe ? "out" : ""}">${money(owe)}</b></button>`;
+    <button class="card tile2" data-go="insights"><span>Saved</span><b class="num ${f.saved < 0 ? "out" : ""}">${money(f.saved)}</b></button>`;
   const months = Array.from({length: 6}, (_, i) => addMonths(m, i - 5));
   barChart($("#dChart"), months.map(x => ({m: x, spend: monthly(x).spend})), [{key: "spend", color: "var(--out-c)", label: "Spent"}],
     {sel: x => x.m === m, onPick: x => { V.period = {k: "month", m: x.m}; render(); }});
@@ -1777,45 +1856,39 @@ function answer(text){
 }
 
 function renderAccounts(){
-  const w = wealth(), P = S.profile;
-  const kv = (k, v, cls = "") => `<div class="kv ${cls}"><span>${k}</span><b class="num">${v}</b></div>`;
+  const w = wealth();
   setHead("Accounts", "");
   if ($("#youSheet")) { $("#youSheet").hidden = !S.sheetUrl; $("#youSheet").href = S.sheetUrl || "#"; }
-  $("#aSummary").innerHTML = `<div class="have-owe num" style="margin-top:0"><div><span>You have</span><b>${money(w.assets)}</b><small>bank ${money(w.cash, {compact: true})} · investments ${money(w.inv, {compact: true})}${w.owed ? ` · owed to you ${money(w.owed, {compact: true})}` : ""}</small></div>
-    <div><span>You owe</span><b>${money(w.liab)}</b><small>cards ${money(w.cardDue, {compact: true})} · loans ${money(w.owe, {compact: true})}</small></div></div>`;
-  // investments
+  $("#aSummary").innerHTML = netWorthCard(w);
+  const head = (title, total, add, cls = "") => `<div class="ch"><h2>${title}</h2><span class="sp"></span>${total !== null ? `<b class="num sectot ${cls}">${total}</b>` : ""}<button class="link addl" data-add="${add}" aria-label="Add to ${title}">+</button></div>`;
+  const acctRow = (a, i) => { const isCC = a.type === "Credit card", u = isCC && a.limit ? Math.max(0, a.balance || 0) / a.limit : null;
+    return `<button class="rowl" data-acct="${i}" style="display:block"><div style="display:flex;gap:12px;align-items:center"><span class="ic">${acctIcon(a.type)}</span><span class="mn"><b>${esc(a.name)}</b><small>${esc(a.type)}${a.last4 ? " ••" + esc(a.last4) : ""}${a.purpose && a.purpose !== "Everyday" ? " · " + esc(a.purpose) : ""}${a.updated ? " · " + fmtShort(a.updated) : ""}</small></span>
+      <span class="rt"><b class="num ${isCC && a.balance > 0 ? "out" : ""}">${a.balance === null || a.balance === undefined ? "–" : (isCC && a.balance > 0 ? "−" : "") + money(Math.abs(a.balance))}</b>${isCC && a.limit ? `<small class="num">${pct(u)} of ${money(a.limit, {compact: true})}</small>` : ""}</span></div>
+      ${u !== null ? `<div class="pbar" style="margin:8px 0 0 50px"><i style="width:${Math.min(100, u * 100)}%;${u > .3 ? "background:var(--out-c)" : ""}"></i></div>` : ""}</button>`; };
+  const banks = S.accounts.map((a, i) => [a, i]).filter(([a]) => a.type !== "Credit card"), cards = S.accounts.map((a, i) => [a, i]).filter(([a]) => a.type === "Credit card");
+  $("#bankCard").innerHTML = head("Cash & Bank", money(w.cash), "bank") + (banks.length ? banks.map(([a, i]) => acctRow(a, i)).join("") : `<div class="hint">Add your savings accounts, wallets and cash with their balance.</div>`);
+  $("#cardCard").innerHTML = head("Credit Cards", w.cardDue ? "−" + money(w.cardDue) : money(0), "card", w.cardDue ? "out" : "") + (cards.length ? cards.map(([a, i]) => acctRow(a, i)).join("") : `<div class="hint">Add each card with its limit and what you owe on it now.</div>`);
+  // investments, grouped by type
+  const groups = CLASSES.map(([c, col]) => ({c, col, items: S.holdings.filter(h => mainClass(h.type) === c).sort((a, b) => b.value - a.value)})).filter(g => g.items.length);
   const gain = w.investedValue - w.invested;
-  const tot = sum(CLASSES, c => w.classes[c[0]] || 0);
-  $("#invCard").innerHTML = `<div class="ch"><h2>Investments</h2><span class="sp"></span><button class="link" id="addHold">+ Add</button></div>
-    ${S.holdings.length ? `<div class="kpis k3" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px"><div><span class="lbl">Current value</span><div class="num" style="font-size:19px;font-weight:700">${money(w.inv)}</div></div>
-      <div><span class="lbl">Invested${w.investedValue < w.inv ? "*" : ""}</span><div class="num" style="font-size:19px;font-weight:700">${money(w.invested)}</div></div>
-      <div><span class="lbl">Gain</span><div class="num ${gain < 0 ? "neg" : gain > 0 ? "pos" : ""}" style="font-size:19px;font-weight:700">${money(gain, {sign: true})}${w.invested ? ` <small style="font-size:12px">${pct(gain / w.invested, 1)}</small>` : ""}</div></div></div>
-    <div class="stack" role="img" aria-label="Allocation">${CLASSES.filter(c => w.classes[c[0]]).map(c => `<i style="width:${w.classes[c[0]] / tot * 100}%;background:${c[1]}" title="${c[0]}"></i>`).join("")}</div>
-    <div class="legend" style="margin-bottom:6px">${CLASSES.filter(c => w.classes[c[0]]).map(c => `<span><i class="sw" style="background:${c[1]}"></i>${c[0]} <b class="num">${pct(w.classes[c[0]] / tot)}</b></span>`).join("")}</div>
-    ${S.holdings.slice().sort((a, b) => b.value - a.value).map(h => { const g = h.invested ? h.value - h.invested : null;
-      return `<button class="rowl" data-hold="${esc(h.id)}"><span class="mn"><b>${esc(h.name)}</b><small>${esc(h.type)}${h.purpose ? " · " + esc(h.purpose) : ""}${h.updated ? " · updated " + fmtShort(h.updated) : ""}</small></span><span class="rt"><b class="num">${money(h.value)}</b><small class="num ${g < 0 ? "neg" : g > 0 ? "pos" : ""}">${g === null ? "" : money(g, {sign: true}) + " · " + pct(g / h.invested, 1)}</small></span></button>`; }).join("")}
-    <p class="note" style="margin:8px 0 0">${w.investedValue < w.inv ? `*Invested and gain cover only the holdings where you entered an invested amount (${money(w.investedValue)} of current value). ` : ""}Values are what you enter. Update them from your broker or app, here or in the Investments tab.</p>`
-    : `<div class="hint">Add mutual funds, stocks, EPF, PPF, NPS, FDs and gold with their current value. They feed your net worth, FI progress and equity allocation.</div>`}`;
-  // goals
-  $("#goalCard").innerHTML = `<div class="ch"><h2>Goals</h2><span class="sp"></span><button class="link" id="addGoal">+ Add</button></div>`
-    + (S.goals.length ? S.goals.map(g => { const left = Math.max(0, g.target - g.saved), m = g.date ? Math.max(0, daysUntil(g.date) / 30.44) : null;
-      return `<button class="rowl" data-goal="${esc(g.id)}" style="display:block"><div style="display:flex;gap:10px"><span class="mn"><b>${esc(g.name)}</b><small>${g.date ? `by ${fmtShort(g.date)}` : "no date"}${left > 0 && m ? ` · ${money(left / Math.max(1, m))} a month to get there` : ""}</small></span><span class="rt"><b class="num">${money(g.saved)}</b><small class="num">of ${money(g.target)}</small></span></div>
-        <div class="pbar"><i style="width:${Math.min(100, g.saved / g.target * 100)}%"></i></div></button>`; }).join("")
-      : `<div class="hint">Add a goal with a target and a date to see how much it needs each month.</div>`);
-  // accounts & cards
-  $("#acctCard").innerHTML = `<div class="ch"><h2>Accounts &amp; cards</h2><span class="sp"></span><small>${w.banks.length} account${w.banks.length === 1 ? "" : "s"} · ${w.cards.length} credit card${w.cards.length === 1 ? "" : "s"}</small><button class="link" id="addAcct">+ Add</button></div>`
-    + (S.accounts.length ? S.accounts.map((a, i) => { const isCC = a.type === "Credit card", u = isCC && a.limit ? Math.max(0, a.balance || 0) / a.limit : null;
-      return `<button class="rowl" data-acct="${i}" style="display:block"><div style="display:flex;gap:10px;align-items:center"><span class="ic">${acctIcon(a.type)}</span><span class="mn"><b>${esc(a.name)}</b><small>${esc(a.type)}${a.last4 ? " ••" + esc(a.last4) : ""}${a.purpose ? " · " + esc(a.purpose) : ""}${a.updated ? " · " + fmtShort(a.updated) : ""}</small></span>
-        <span class="rt"><b class="num">${a.balance === null || a.balance === undefined ? "–" : money(a.balance)}</b><small class="num">${isCC ? (a.limit ? `${pct(u)} of ${money(a.limit, {compact: true})}` : "due") : "balance"}</small></span></div>
-        ${u !== null ? `<div class="pbar" style="margin-left:48px"><i style="width:${Math.min(100, u * 100)}%;${u > .5 ? "background:var(--critical)" : ""}"></i><span class="mark" style="left:30%"></span></div>` : ""}</button>`; }).join("")
-      + `<p class="note" style="margin:8px 0 0">For a credit card, the balance is what you owe on it now. The tick marks 30% utilization.</p>`
-      : `<div class="hint">Add your bank accounts with their balance, and your cards with their limit and what you owe. They give net worth, emergency-fund months and card utilization.</div>`);
-  // debts
-  const owe = sum(w.open.filter(d => d.direction === "owe"), remaining), owed = sum(w.open.filter(d => d.direction === "owed"), remaining);
-  const closed = S.debts.filter(d => remaining(d) <= 0);
-  $("#debtCard").innerHTML = `<div class="ch"><h2>Debts</h2><span class="sp"></span><small class="num">You owe ${money(owe)} · owed to you ${money(owed)}</small><button class="link" id="addDebt">+ Add</button></div>`
-    + (w.open.length ? w.open.sort(byDue).map(debtRow).join("") : `<div class="hint">Loans, money you borrowed, money people owe you. Each can have a deadline and part-payments.</div>`)
+  $("#invCard").innerHTML = head("Investments", money(w.inv), "hold")
+    + (S.holdings.length ? (w.invested ? `<div class="invsum num">Invested ${money(w.invested)} · <span class="${gain < 0 ? "out" : "in"}">${money(gain, {sign: true})} (${pct(gain / w.invested, 1)})</span></div>` : "")
+      + groups.map(g => `<div class="grp"><i style="background:${g.col}"></i><span>${g.c}</span><b class="num">${money(sum(g.items, h => h.value))}</b></div>`
+        + g.items.map(h => { const gn = h.invested ? h.value - h.invested : null;
+          const detail = h.units !== null && h.units !== undefined && h.price ? `${+h.units.toFixed(8)} × ${money(h.price, {compact: h.price >= 1e5})}` : esc(h.type);
+          return `<button class="rowl" data-hold="${esc(h.id)}"><span class="mn"><b>${esc(h.name)}</b><small>${detail}${h.updated ? " · " + fmtShort(h.updated) : ""}</small></span><span class="rt"><b class="num">${money(h.value)}</b>${gn !== null ? `<small class="num ${gn < 0 ? "out" : "in"}">${money(gn, {sign: true})} · ${pct(gn / h.invested, 1)}</small>` : ""}</span></button>`; }).join("")).join("")
+      : `<div class="hint">Add stocks, mutual funds, EPF, PPF, NPS, FDs, gold and crypto. For crypto or shares you can enter units and a price.</div>`);
+  // loans & debts
+  const owe = sum(w.open.filter(d => d.direction === "owe"), remaining), closed = S.debts.filter(d => remaining(d) <= 0);
+  $("#debtCard").innerHTML = head("Loans & Debts", owe ? "−" + money(owe) : money(0), "debt", owe ? "out" : "")
+    + (w.open.length ? w.open.sort(byDue).map(debtRow).join("") : `<div class="hint">Loans, EMIs, money you borrowed, and money people owe you.</div>`)
     + (closed.length ? `<details class="more"><summary>${closed.length} paid off</summary>${closed.map(debtRow).join("")}</details>` : "");
+  // goals
+  $("#goalCard").innerHTML = head("Goals", null, "goal")
+    + (S.goals.length ? S.goals.map(g => { const left = Math.max(0, g.target - g.saved), m = g.date ? Math.max(0, daysUntil(g.date) / 30.44) : null;
+      return `<button class="rowl" data-goal="${esc(g.id)}" style="display:block"><div style="display:flex;gap:10px"><span class="mn"><b>${esc(g.name)}</b><small>${g.date ? `by ${fmtShort(g.date)}` : "no date"}${left > 0 && m ? ` · ${money(left / Math.max(1, m))} a month` : ""}</small></span><span class="rt"><b class="num">${money(g.saved)}</b><small class="num">of ${money(g.target)}</small></span></div>
+        <div class="pbar" style="margin-top:8px"><i style="width:${Math.min(100, g.saved / g.target * 100)}%"></i></div></button>`; }).join("")
+      : `<div class="hint">A goal with a target and a date shows how much it needs each month.</div>`);
 }
 function debtRow(d){
   const r = remaining(d), p = paidOf(d);
@@ -2162,11 +2235,11 @@ function setAcctType(t){ V.acctType = t; $$("#aType .chip").forEach(b => b.setAt
 function setAcctPurpose(p){ V.acctPurpose = p; $$("#aPurpose .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.p === p))); }
 $("#aType").onclick = e => { const b = e.target.closest(".chip"); if (b) setAcctType(b.dataset.t); };
 $("#aPurpose").onclick = e => { const b = e.target.closest(".chip"); if (b) setAcctPurpose(b.dataset.p); };
-function openAcct(i){
+function openAcct(i, presetType){
   const a = i >= 0 ? S.accounts[i] : null; V.acctEditing = a ? i : -1;
   $("#acctTitle").textContent = a ? a.name : "Add an account or card";
   $("#aName").value = a ? a.name : ""; $("#aLast4").value = a ? a.last4 : ""; $("#aBal").value = a && a.balance !== null && a.balance !== undefined ? a.balance : ""; $("#aLim").value = a && a.limit ? a.limit : "";
-  setAcctType(a ? a.type : "Bank account"); setAcctPurpose(a ? a.purpose || "" : "");
+  setAcctType(a ? a.type : presetType || "Bank account"); setAcctPurpose(a ? a.purpose || "" : "");
   $("#aErr").textContent = ""; $("#aDel").hidden = !a; $("#aSave").textContent = a ? "Save" : "Add";
   adlg.showModal(); if (!a) setTimeout(() => $("#aName").focus(), 60);
 }
@@ -2194,23 +2267,32 @@ const hdlg = $("#holdDlg");
 $("#hType").innerHTML = HOLD_TYPES.map(t => `<button type="button" class="chip" data-t="${t}">${t}</button>`).join("");
 $("#hPurpose").innerHTML = ["Long term", "Retirement", "Emergency fund", "Savings", ""].map(p => `<button type="button" class="chip" data-p="${p}">${p || "None"}</button>`).join("");
 function setHold(k, v){ V[k] = v; const box = k === "holdType" ? "#hType" : "#hPurpose", attr = k === "holdType" ? "t" : "p"; $$(box + " .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === v))); }
-$("#hType").onclick = e => { const b = e.target.closest(".chip"); if (b) setHold("holdType", b.dataset.t); };
+$("#hType").onclick = e => { const b = e.target.closest(".chip"); if (b) { setHold("holdType", b.dataset.t); $("#hTypeOwn").value = ""; } };
+$("#hTypeOwn").oninput = e => { if (e.target.value.trim()) $$("#hType .chip").forEach(b => b.setAttribute("aria-pressed", "false")); };
+// units x price fills in the value
+const unitsValue = () => { const u = parseAmt($("#hUnits").value), p = parseAmt($("#hPrice").value); return u > 0 && p > 0 ? Math.round(u * p * 100) / 100 : null; };
+["#hUnits", "#hPrice"].forEach(sel => $(sel).addEventListener("input", () => { const v = unitsValue(); if (v !== null) $("#hVal").value = v; }));
 $("#hPurpose").onclick = e => { const b = e.target.closest(".chip"); if (b) setHold("holdPurpose", b.dataset.p); };
 function openHold(id){
   const h = id ? S.holdings.find(x => x.id === id) : null; V.holdEditing = h ? h.id : null;
   $("#holdTitle").textContent = h ? h.name : "Add an investment";
   $("#hName").value = h ? h.name : ""; $("#hVal").value = h ? h.value : ""; $("#hInv").value = h && h.invested !== null && h.invested !== undefined ? h.invested : ""; $("#hNote").value = h ? h.note || "" : "";
-  setHold("holdType", h ? h.type : "Equity mutual fund"); setHold("holdPurpose", h ? h.purpose || "" : "Long term");
+  $("#hUnits").value = h && h.units !== null && h.units !== undefined ? h.units : ""; $("#hPrice").value = h && h.price ? h.price : "";
+  const known = !h || HOLD_TYPES.includes(h.type);
+  setHold("holdType", h ? (known ? h.type : "") : "Stocks"); $("#hTypeOwn").value = known ? "" : h.type;
+  setHold("holdPurpose", h ? h.purpose || "" : "Long term");
   $("#hErr").textContent = ""; $("#hDel").hidden = !h; $("#hSave").textContent = h ? "Save" : "Add";
   hdlg.showModal(); if (!h) setTimeout(() => $("#hName").focus(), 60);
 }
 $("#holdForm").onsubmit = async e => {
   e.preventDefault();
-  const name = $("#hName").value.trim(), value = parseAmt($("#hVal").value), invRaw = $("#hInv").value.trim(), err = m => { $("#hErr").textContent = m; };
+  const name = $("#hName").value.trim(), uv = unitsValue(), value = uv !== null ? uv : parseAmt($("#hVal").value), invRaw = $("#hInv").value.trim(), err = m => { $("#hErr").textContent = m; };
   if (!name) { err("Give it a name."); return $("#hName").focus(); }
-  if (!(value >= 0)) { err("Enter its current value."); return $("#hVal").focus(); }
+  if (!(value >= 0)) { err("Enter its current value, or units and a price."); return $("#hVal").focus(); }
   if (invRaw && !isFinite(parseAmt(invRaw))) return err("Amount invested should be a number.");
-  const h = {id: V.holdEditing || uid(), name, type: V.holdType, value, invested: invRaw ? parseAmt(invRaw) : null, purpose: V.holdPurpose, updated: todayISO(), note: $("#hNote").value.trim()};
+  const type = $("#hTypeOwn").value.trim() || V.holdType || "Other";
+  const h = {id: V.holdEditing || uid(), name, type, value, invested: invRaw ? parseAmt(invRaw) : null, purpose: V.holdPurpose, updated: todayISO(), note: $("#hNote").value.trim(),
+    units: uv !== null ? parseAmt($("#hUnits").value) : null, price: uv !== null ? parseAmt($("#hPrice").value) : null};
   const before = S.holdings.slice(); S.holdings = V.holdEditing ? S.holdings.map(x => x.id === h.id ? h : x) : [...S.holdings, h];
   hdlg.close(); cache(); render();
   try { await track(api("saveHolding", h)); cache(); } catch (ex) { S.holdings = before; cache(); render(); toast("Couldn't save: " + errMsg(ex)); }
@@ -2340,6 +2422,7 @@ document.addEventListener("click", e => {
   const gl = t.closest("[data-goal]"); if (gl) return openGoal(gl.dataset.goal);
   const a = t.closest("[data-acct]"); if (a && a.classList.contains("rowl")) return openAcct(+a.dataset.acct);
   if (t.closest("#addHold")) return openHold(); if (t.closest("#addGoal")) return openGoal(); if (t.closest("#addAcct")) return openAcct(-1); if (t.closest("#addDebt")) return openDebt();
+  const ad = t.closest("[data-add]"); if (ad) return ({bank: () => openAcct(-1, "Bank account"), card: () => openAcct(-1, "Credit card"), hold: () => openHold(), debt: () => openDebt(), goal: () => openGoal()})[ad.dataset.add]();
   const ind = t.closest("[data-ind]"); if (ind) return openInd(+ind.dataset.ind);
   const mr = t.closest("tr[data-month]"); if (mr){ V.period = {k: "month", m: mr.dataset.month}; return go("home"); }
   const m = t.closest("[data-merge]"); if (m) return mergePair(m.dataset.merge);

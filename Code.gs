@@ -4,7 +4,7 @@
  *
  *   Transactions   every income / expense (Source: Manual, Email or Statement)
  *   Accounts       bank accounts and cards: balance, credit limit, purpose (e.g. Emergency fund)
- *   Investments    holdings: invested amount, current value, purpose
+ *   Investments    holdings: invested amount, current value (or units x price, e.g. crypto), purpose
  *   Goals          savings goals with a target amount and date
  *   Debts          money you owe / are owed, with deadlines; Debt payments holds part-payments
  *   History        net worth at the end of each month (filled in automatically)
@@ -19,7 +19,7 @@
 const SHEETS = {
   tx:       { name: 'Transactions',  headers: ['ID', 'Date', 'Type', 'Category', 'Description', 'Amount', 'Source', 'Ref', 'Created', 'Account'] },
   accounts: { name: 'Accounts',      headers: ['Name', 'Type', 'Last 4 digits', 'Balance', 'Credit limit', 'Purpose', 'Updated'] },
-  holdings: { name: 'Investments',   headers: ['ID', 'Name', 'Type', 'Invested', 'Current value', 'Purpose', 'Updated', 'Note'] },
+  holdings: { name: 'Investments',   headers: ['ID', 'Name', 'Type', 'Invested', 'Current value', 'Purpose', 'Updated', 'Note', 'Units', 'Price per unit'] },
   goals:    { name: 'Goals',         headers: ['ID', 'Name', 'Target amount', 'Target date', 'Saved so far', 'Note'] },
   debts:    { name: 'Debts',         headers: ['ID', 'Source', 'Direction', 'Amount', 'Due date', 'Note', 'Created'] },
   payments: { name: 'Debt payments', headers: ['ID', 'Debt ID', 'Date', 'Amount', 'Note'] },
@@ -42,7 +42,9 @@ const INCOME_NAMES = INCOME_CATS.map(c => c[0]);
 const GROUPS = { expense: ['Need', 'Want', 'Savings', 'Debt', 'Transfer'], income: ['Income', 'Transfer'] };
 
 const ACCOUNT_TYPES = ['Bank account', 'Debit card', 'Credit card', 'UPI / wallet', 'Cash'];
-const HOLDING_TYPES = ['Equity mutual fund', 'Debt mutual fund', 'Stocks', 'EPF', 'PPF', 'NPS', 'FD / RD', 'Bonds', 'Gold', 'Crypto', 'Real estate', 'Other'];
+// Suggested types; any other text is accepted too (it counts as "Other" in the app's groups).
+const HOLDING_TYPES = ['Stocks', 'Equity mutual fund', 'International stocks', 'ESOP / RSU', 'Debt mutual fund', 'FD / RD', 'Bonds', 'EPF', 'PPF', 'NPS',
+  'Crypto', 'Gold', 'Silver', 'Real estate', 'Vehicle', 'Other'];
 
 // Profile and targets: rows in the Settings tab. Benchmarks come from Indian bank / fintech guidance (see README).
 const PROFILE = [
@@ -589,22 +591,33 @@ function readAccounts_(tz) {
 
 /* ------------------------------------------------------------------ investments */
 
+/**
+ * Saves an investment. Give either its current value, or units and a price per unit (e.g. 0.05 BTC at 78,00,000),
+ * in which case the value is units x price. Type is free text; the suggestions are in HOLDING_TYPES.
+ */
 function saveHolding(h) {
   if (!h || typeof h !== 'object') throw new Error('Missing investment');
   const name = String(h.name || '').trim().slice(0, 60);
   if (!name) throw new Error('Give it a name');
-  const value = optNum_(h.value);
-  if (value === '') throw new Error('Enter its current value');
-  const vals = [safe_(name), HOLDING_TYPES.indexOf(h.type) >= 0 ? h.type : 'Other', optNum_(h.invested), value,
-    safe_(String(h.purpose || '').slice(0, 40)), /^\d{4}-\d{2}-\d{2}$/.test(String(h.updated)) ? h.updated : todayISO_(), safe_(String(h.note || '').slice(0, 200))];
+  const units = optNum_(h.units), price = optNum_(h.price);
+  let value = optNum_(h.value);
+  if (units !== '' && price !== '') value = Math.round(units * price * 100) / 100;
+  if (value === '') throw new Error('Enter its current value, or units and a price');
+  const type = String(h.type || '').trim().slice(0, 30) || 'Other';
+  const updated = /^\d{4}-\d{2}-\d{2}$/.test(String(h.updated)) ? h.updated : todayISO_();
+  const vals = [safe_(name), safe_(type), optNum_(h.invested), value, safe_(String(h.purpose || '').slice(0, 40)), dateCell_(updated),
+    safe_(String(h.note || '').slice(0, 200)), units, price];
   return upsert_('holdings', h.id, vals);
 }
 function deleteHolding(id) { return deleteById_('holdings', id); }
 
 function readHoldings_(tz) {
-  return readRows_('holdings', r => String(r[1]).trim() && r[4] !== '', r => ({
-    id: String(r[0]), name: String(r[1]).trim(), type: HOLDING_TYPES.indexOf(String(r[2]).trim()) >= 0 ? String(r[2]).trim() : 'Other',
-    invested: r[3] === '' ? null : num_(r[3]), value: num_(r[4]), purpose: String(r[5] || '').trim(), updated: toISO_(r[6], tz), note: String(r[7] || '').trim(),
+  // value: the Current value cell, or Units x Price per unit when both are filled in (handy for crypto and stocks)
+  const val = r => r[8] !== '' && r[8] !== undefined && r[9] !== '' && r[9] !== undefined ? Math.round(num_(r[8]) * num_(r[9]) * 100) / 100 : r[4] === '' ? null : num_(r[4]);
+  return readRows_('holdings', r => String(r[1]).trim() && val(r) !== null, r => ({
+    id: String(r[0]), name: String(r[1]).trim(), type: String(r[2] || '').trim() || 'Other',
+    invested: r[3] === '' ? null : num_(r[3]), value: val(r), purpose: String(r[5] || '').trim(), updated: toISO_(r[6], tz), note: String(r[7] || '').trim(),
+    units: r[8] === '' || r[8] === undefined ? null : num_(r[8]), price: r[9] === '' || r[9] === undefined ? null : num_(r[9]),
   }));
 }
 
@@ -767,7 +780,8 @@ function ensureSheets_() {
     if (key === 'budgets') money(['B']);
     if (key === 'debts') { money(['D']); sh.getRange('E2:E').setNumberFormat('yyyy-mm-dd'); sh.getRange('G2:G').setNumberFormat('yyyy-mm-dd hh:mm'); sh.setColumnWidth(2, 200); sh.setColumnWidth(6, 240); list('C2:C', ['I owe', 'Owed to me']); }
     if (key === 'payments') { sh.getRange('C2:C').setNumberFormat('yyyy-mm-dd'); money(['D']); }
-    if (key === 'holdings') { money(['D', 'E']); sh.getRange('G2:G').setNumberFormat('yyyy-mm-dd'); sh.setColumnWidth(2, 200); list('C2:C', HOLDING_TYPES); }
+    if (key === 'holdings') { money(['D', 'E', 'J']); sh.getRange('G2:G').setNumberFormat('yyyy-mm-dd'); sh.setColumnWidth(2, 200);
+      sh.getRange('C2:C').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(HOLDING_TYPES, true).setAllowInvalid(true).build()); }
     if (key === 'goals') { money(['C', 'E']); sh.getRange('D2:D').setNumberFormat('yyyy-mm-dd'); sh.setColumnWidth(2, 200); }
     if (key === 'history') { sh.getRange('A2:A').setNumberFormat('@'); money(['B', 'C', 'D', 'E', 'F', 'G']); }
     if (key === 'cats') list('B2:B', ['Expense', 'Income']);
@@ -813,10 +827,21 @@ function migrate_() {
     try { migrateV4_(); }
     catch (err) { writeSetting_('Upgrade error', String(err && err.stack || err).slice(0, 500)); } // retried on the next open
   }
-  if (v === 4) {
-    try { migrateV5_(); }
+  if (v === 4 || v === 5) {
+    try { if (v === 4) migrateV5_(); migrateV6_(); }
     catch (err) { writeSetting_('Upgrade error', String(err && err.stack || err).slice(0, 500)); }
   }
+}
+
+/** v6: investments take units x price (crypto, stocks) and any type you like; the Type dropdown only suggests. */
+function migrateV6_() {
+  withLock_(() => {
+    const sh = sheet_('holdings');
+    sh.getRange('C2:C').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(HOLDING_TYPES, true).setAllowInvalid(true).build());
+    sh.getRange('J2:J').setNumberFormat('#,##0.00');
+    sh.getRange('G2:G').setNumberFormat('yyyy-mm-dd');
+    writeSetting_('Version', 6);
+  });
 }
 
 /**
