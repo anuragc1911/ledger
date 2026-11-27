@@ -89,10 +89,14 @@ function doGet() {
     .addMetaTag('mobile-web-app-capable', 'yes');
 }
 
-/** Run once from the editor: creates the tabs and turns on email import. */
+/** Adds a "Ledger" menu to the Sheet. */
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Ledger').addItem('Rebuild dashboard tab', 'buildDashboard').addToUi();
+}
+
+/** Run once from the editor: creates the tabs. */
 function setup() {
   ensureSheets_();
-  setEmailImport(true);
   Logger.log('Ledger is set up. Now Deploy > New deployment > Web app.');
 }
 
@@ -154,7 +158,7 @@ function getData() {
 function addTxn(t) {
   const tx = clean_(t);
   return withLock_(() => {
-    sheet_('tx').appendRow([tx.id, tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, 'Manual', '', new Date(), safe_(tx.account)]);
+    sheet_('tx').appendRow([tx.id, dateCell_(tx.date), cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, 'Manual', '', new Date(), safe_(tx.account)]);
     return tx;
   });
 }
@@ -165,7 +169,7 @@ function updateTxn(t) {
     const sh = sheet_('tx');
     const row = findRow_(sh, tx.id);
     if (!row) throw new Error('That transaction is no longer in the sheet. Refresh and try again.');
-    sh.getRange(row, C.date + 1, 1, 5).setValues([[tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount]]);
+    sh.getRange(row, C.date + 1, 1, 5).setValues([[dateCell_(tx.date), cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount]]);
     sh.getRange(row, C.account + 1).setValue(safe_(tx.account));
     return tx;
   });
@@ -185,7 +189,7 @@ function restoreTxn(t) {
   const tx = clean_(t);
   const src = t.source === 'email' ? 'Email' : t.source === 'statement' ? 'Statement' : 'Manual';
   return withLock_(() => {
-    sheet_('tx').appendRow([tx.id, tx.date, cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, src, String(t.ref || ''), new Date(), safe_(tx.account)]);
+    sheet_('tx').appendRow([tx.id, dateCell_(tx.date), cap_(tx.type), safe_(tx.category), safe_(tx.description), tx.amount, src, String(t.ref || ''), new Date(), safe_(tx.account)]);
     return tx;
   });
 }
@@ -315,6 +319,12 @@ function checkEmailNow(days) {
  * linked to it (its Ref), keeps your category, and gets the card filled in if it was empty.
  */
 function importEmails(days) {
+  // Switched off: bank alert emails were too often misread (expenses as income). Transactions are added by hand
+  // or from statements. A leftover 15-minute trigger deletes itself here.
+  if (String(readSettings_()['Email import'] || '').toLowerCase() === 'off') {
+    ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'importEmails').forEach(t => ScriptApp.deleteTrigger(t));
+    return 0;
+  }
   days = typeof days === 'number' && days > 0 ? Math.min(days, 730) : 0; // the 15-min trigger passes an event object
   ensureSheets_();
   const s = readSettings_();
@@ -365,7 +375,7 @@ function importEmails(days) {
         const acct = tx.last4 ? accounts.find(a => a.last4 === tx.last4) : null;
         const hit = matchExisting(tx.type, tx.amount, day);
         if (hit) { if (hit.manual) links.push({ row: hit.row, ref, account: !hit.hasAccount && acct ? acct.name : '' }); continue; }
-        rows.push([Utilities.getUuid(), day, cap_(tx.type), tx.category,
+        rows.push([Utilities.getUuid(), dateCell_(day), cap_(tx.type), tx.category,
           safe_(tx.description), tx.amount, 'Email', ref, new Date(), acct ? safe_(acct.name) : '']);
       }
     }
@@ -373,6 +383,9 @@ function importEmails(days) {
   }
 
   withLock_(() => {
+    // another run may have added the same emails meanwhile: re-check refs inside the lock
+    const now = new Set(sh.getLastRow() > 1 ? sh.getRange(2, C.ref + 1, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0])) : []);
+    for (let i = rows.length - 1; i >= 0; i--) if (now.has(rows[i][C.ref])) rows.splice(i, 1);
     links.forEach(l => {
       sh.getRange(l.row, C.ref + 1).setValue(l.ref);
       if (l.account) sh.getRange(l.row, C.account + 1).setValue(safe_(l.account));
@@ -765,8 +778,8 @@ function ensureSheets_() {
 /** One-time upgrades of an existing sheet, remembered in Settings. */
 function migrate_() {
   const s = readSettings_();
-  if (s['Version'] && Number(s['Version']) >= 3) return;
-  withLock_(() => {
+  const v = Number(s['Version']) || 0;
+  if (v < 3) withLock_(() => {
     // Categories: list every category in the tab, each with a Group.
     const cs = sheet_('cats');
     const n = cs.getLastRow() - 1;
@@ -796,6 +809,187 @@ function migrate_() {
     PROFILE.forEach(([label, def]) => { if (cur[label] === undefined) writeSetting_(label, def); });
     writeSetting_('Version', 3);
   });
+  if (v < 4) {
+    try { migrateV4_(); }
+    catch (err) { writeSetting_('Upgrade error', String(err && err.stack || err).slice(0, 500)); } // retried on the next open
+  }
+  if (v === 4) {
+    try { migrateV5_(); }
+    catch (err) { writeSetting_('Upgrade error', String(err && err.stack || err).slice(0, 500)); }
+  }
+}
+
+/**
+ * v5: the v4 upgrade wrote dates as JavaScript Dates, and time-zone conversion stored each one a day early.
+ * Statement rows get their dates back from the statement; the restored entry gets its own date; every other
+ * row keeps what it shows. All dates are rewritten as day numbers.
+ */
+function migrateV5_() {
+  const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  const data = typeof MY_DATA !== 'undefined' ? MY_DATA : null;
+  const truth = {};
+  if (data) (data.statement || []).concat(data.restore || []).forEach(r => { truth[r[5]] = r[0]; });
+  withLock_(() => {
+    const sh = sheet_('tx'), n = sh.getLastRow() - 1;
+    if (n > 0) {
+      const rows = sh.getRange(2, 1, n, SHEETS.tx.headers.length).getValues();
+      const fixed = rows.map(r => {
+        const ref = String(r[C.ref] || '');
+        let iso = truth[ref];
+        if (!iso && data && data.restore) { // the restored entry kept its original ID: match it by description and amount
+          const hit = data.restore.find(x => String(r[C.description]).trim() === x[3] && num_(r[C.amount]) === x[4]);
+          if (hit) iso = hit[0];
+        }
+        return [iso ? serial_(iso) : (toISO_(r[C.date], tz) ? serial_(toISO_(r[C.date], tz)) : r[C.date])];
+      });
+      sh.getRange(2, C.date + 1, n, 1).setValues(fixed).setNumberFormat('yyyy-mm-dd');
+    }
+    writeSetting_('Upgrade error', '');
+    writeSetting_('Version', 5);
+  });
+}
+
+/** A sheet starts with 1,000 rows: add more before writing past the end. */
+function ensureRows_(sh, rows) {
+  const max = sh.getMaxRows();
+  if (rows > max) sh.insertRowsAfter(max, rows - max);
+}
+
+/**
+ * v4: email import off for good and its rows removed (they were misread and doubled), your private data
+ * (MyData.gs: the bank statement and your accounts) loaded once, and the Dashboard tab built.
+ */
+function migrateV4_() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'importEmails').forEach(t => ScriptApp.deleteTrigger(t));
+  const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  withLock_(() => {
+    const sh = sheet_('tx'), w = SHEETS.tx.headers.length, n = sh.getLastRow() - 1;
+    const keep = (n > 0 ? sh.getRange(2, 1, n, w).getValues() : []).filter(r => String(r[C.source]).trim().toLowerCase() !== 'email');
+    const have = new Set(keep.map(r => String(r[C.ref] || '')).filter(Boolean));
+    const data = typeof MY_DATA !== 'undefined' ? MY_DATA : null;
+    if (data && data.restore) data.restore.forEach(([date, type, cat, desc, amount, ref]) => {
+      if (have.has(ref) || keep.some(r => String(r[C.description]).trim() === desc && toISO_(r[C.date], tz) === date && num_(r[C.amount]) === amount)) return;
+      have.add(ref);
+      keep.push([Utilities.getUuid(), serial_(date), type, safe_(cat), safe_(desc), amount, 'Manual', ref, new Date(), '']);
+    });
+    if (data && data.statement) data.statement.forEach(([date, type, cat, desc, amount, ref]) => {
+      if (have.has(ref)) return;
+      have.add(ref);
+      keep.push([Utilities.getUuid(), serial_(date), type, safe_(cat), safe_(desc), amount, 'Statement', ref, new Date(), safe_(data.statementAccount || '')]);
+    });
+    const iso = r => toISO_(r[C.date], tz);
+    keep.forEach(r => { r[C.date] = serial_(iso(r)); }); // every date as a day number
+    keep.sort((a, b) => a[C.date] - b[C.date]);
+    ensureRows_(sh, keep.length + 1);
+    if (keep.length) sh.getRange(2, 1, keep.length, w).setValues(keep);
+    if (n > keep.length) sh.getRange(keep.length + 2, 1, n - keep.length, w).clearContent();
+    if (data && data.accounts) {
+      const as = sheet_('accounts'), cur = readAccounts_(tz).map(a => a.name.toLowerCase());
+      data.accounts.filter(a => cur.indexOf(String(a.name).toLowerCase()) < 0).forEach(a => {
+        const r = as.getLastRow() + 1;
+        as.getRange(r, 3).setNumberFormat('@');
+        as.getRange(r, 1, 1, 7).setValues([[a.name, a.type, a.last4 || '', optNum_(a.balance), optNum_(a.limit), a.purpose || '', a.updated ? Utilities.parseDate(a.updated, tz, 'yyyy-MM-dd') : '']]);
+      });
+    }
+    writeSetting_('Email import', 'Off');
+    writeSetting_('Upgrade error', '');
+    writeSetting_('Version', 4);
+  });
+  buildDashboard();
+}
+
+/* ------------------------------------------------------------------ Dashboard tab (live formulas) */
+
+/**
+ * (Re)builds the Dashboard tab: month-by-month income / spent / invested / saved, a salary tracker and a
+ * category-by-month heatmap. Everything is a formula on the Transactions tab, so it stays current even when
+ * you edit the Sheet directly. Change the year in B2 to see another year. Menu: Ledger > Rebuild dashboard tab.
+ */
+function buildDashboard() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName('Dashboard');
+  if (sh) ss.deleteSheet(sh);
+  sh = ss.insertSheet('Dashboard', 0);
+  sh.setHiddenGridlines(true);
+  const AMT = 'Transactions!$F$2:$F', TYP = 'Transactions!$C$2:$C', CAT = 'Transactions!$D$2:$D', DT = 'Transactions!$B$2:$B';
+  const inMonth = c => `${DT},">="&${c},${DT},"<"&EDATE(${c},1)`;
+  const catsOf = (type, cond) => `IFERROR(FILTER(Categories!$A$2:$A,Categories!$B$2:$B="${type}",${cond}),"~none~")`;
+  const INR = '[>=10000000]"₹"##\,##\,##\,##0;[>=100000]"₹"##\,##\,##0;"₹"##,##0';
+  const year = Number(Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyyy'));
+
+  sh.getRange('A1').setValue('Ledger dashboard').setFontSize(18).setFontWeight('bold').setFontFamily('Georgia');
+  sh.getRange('A2:B2').setValues([['Year', year]]);
+  sh.getRange('A2').setFontColor('#62626A');
+  sh.getRange('B2').setFontWeight('bold').setBackground('#F0F1F3').setHorizontalAlignment('left');
+  sh.getRange('C2').setValue('Change the year to see another one. Every number below is a formula on the Transactions tab.').setFontColor('#9094A0').setFontSize(9);
+
+  // month-by-month
+  const head = ['Month', 'Income', 'Spent', 'Invested', 'Saved', 'Savings rate', 'Salary received', 'Expected salary', 'Salary gap'];
+  sh.getRange(4, 1, 1, head.length).setValues([head]);
+  const rows = [];
+  for (let m = 1; m <= 12; m++) {
+    const r = 4 + m, A = `$A${r}`;
+    rows.push([
+      `=DATE($B$2,${m},1)`,
+      `=SUMIFS(${AMT},${TYP},"Income",${inMonth(A)})-SUMPRODUCT(SUMIFS(${AMT},${TYP},"Income",${inMonth(A)},${CAT},${catsOf('Income', 'Categories!$D$2:$D="Transfer"')}))`,
+      `=SUMIFS(${AMT},${TYP},"Expense",${inMonth(A)})-SUMPRODUCT(SUMIFS(${AMT},${TYP},"Expense",${inMonth(A)},${CAT},${catsOf('Expense', '(Categories!$D$2:$D="Transfer")+(Categories!$D$2:$D="Savings")')}))`,
+      `=SUMPRODUCT(SUMIFS(${AMT},${TYP},"Expense",${inMonth(A)},${CAT},${catsOf('Expense', 'Categories!$D$2:$D="Savings"')}))`,
+      `=B${r}-C${r}`,
+      `=IF(B${r}>0,E${r}/B${r},"")`,
+      `=SUMIFS(${AMT},${TYP},"Income",${CAT},"Salary",${inMonth(A)})`,
+      `=IF(${A}>TODAY(),"",N(IFERROR(VLOOKUP("Monthly take-home*",Settings!$A:$B,2,FALSE),0)))`,
+      `=IF(H${r}="","",G${r}-H${r})`,
+    ]);
+  }
+  sh.getRange(5, 1, 12, head.length).setFormulas(rows);
+  sh.getRange(17, 1, 1, head.length).setFormulas([['Total', '=SUM(B5:B16)', '=SUM(C5:C16)', '=SUM(D5:D16)', '=SUM(E5:E16)', '=IF(B17>0,E17/B17,"")', '=SUM(G5:G16)', '=SUM(H5:H16)', '=SUM(I5:I16)']]);
+  sh.getRange('A5:A16').setNumberFormat('mmm yyyy');
+  sh.getRange('B5:E17').setNumberFormat(INR);
+  sh.getRange('G5:I17').setNumberFormat(INR);
+  sh.getRange('F5:F17').setNumberFormat('0%');
+  sh.getRange(4, 1, 1, head.length).setFontWeight('bold').setBackground('#F7F7F8').setFontColor('#3A3A40');
+  sh.getRange(17, 1, 1, head.length).setFontWeight('bold').setBorder(true, null, null, null, null, null, '#D9D9DC', SpreadsheetApp.BorderStyle.SOLID);
+  sh.getRange('E5:E17').setFontWeight('bold');
+
+  // category x month heatmap
+  sh.getRange('A20').setValue('Spending by category').setFontSize(13).setFontWeight('bold').setFontFamily('Georgia');
+  const hm = [['Category']];
+  for (let m = 1; m <= 12; m++) hm[0].push(`=DATE($B$2,${m},1)`);
+  hm[0].push('Total');
+  sh.getRange(21, 1, 1, 14).setFormulas([hm[0].map(x => String(x))]);
+  sh.getRange('B21:M21').setNumberFormat('mmm');
+  sh.getRange(21, 1, 1, 14).setFontWeight('bold').setBackground('#F7F7F8').setFontColor('#3A3A40');
+  sh.getRange('A22').setFormula(`=FILTER(Categories!$A$2:$A,Categories!$B$2:$B="Expense",(Categories!$D$2:$D<>"Transfer")*(Categories!$D$2:$D<>"Savings")*(Categories!$A$2:$A<>""))`);
+  const cells = [];
+  for (let r = 22; r <= 51; r++) {
+    const row = [];
+    for (let c = 2; c <= 13; c++) {
+      const col = String.fromCharCode(64 + c);
+      row.push(`=IF($A${r}="","",LET(v,SUMIFS(${AMT},${TYP},"Expense",${CAT},$A${r},${inMonth(col + '$21')}),IF(v=0,"",v)))`);
+    }
+    row.push(`=IF($A${r}="","",SUM(B${r}:M${r}))`);
+    cells.push(row);
+  }
+  sh.getRange(22, 2, 30, 13).setFormulas(cells);
+  sh.getRange('B22:N51').setNumberFormat(INR);
+  sh.setConditionalFormatRules([SpreadsheetApp.newConditionalFormatRule().setRange(sh.getRange('B22:M51'))
+    .setGradientMinpointWithValue('#FFFFFF', SpreadsheetApp.InterpolationType.NUMBER, '0')
+    .setGradientMaxpoint('#3B6FA8').build()]);
+
+  sh.setColumnWidth(1, 130);
+  for (let c = 2; c <= 14; c++) sh.setColumnWidth(c, 92);
+  sh.setFrozenRows(0);
+
+  // chart: income vs spent by month
+  const chart = sh.newChart().setChartType(Charts.ChartType.COLUMN)
+    .addRange(sh.getRange('A4:C16'))
+    .setOption('title', 'Income vs spent')
+    .setOption('colors', ['#3B6FA8', '#B96D2A'])
+    .setOption('legend', { position: 'bottom' })
+    .setOption('width', 620).setOption('height', 300)
+    .setPosition(3, 11, 0, 0).build();
+  sh.insertChart(chart);
+  return true;
 }
 
 function sheet_(key) { return SpreadsheetApp.getActive().getSheetByName(SHEETS[key].name); }
@@ -902,10 +1096,23 @@ function optNum_(v) {
 
 function toISO_(v, tz) {
   if (v instanceof Date && !isNaN(v)) return Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+  if (typeof v === 'number' && v > 20000 && v < 80000) { // a day number
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+  }
   const s = String(v || '').trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
   const d = s ? new Date(s) : null;
   return d && !isNaN(d) ? Utilities.formatDate(d, tz, 'yyyy-MM-dd') : '';
+}
+/**
+ * A yyyy-MM-dd date as the Sheet's own day number (days since 30 Dec 1899). Writing a number instead of a
+ * JavaScript Date avoids time-zone conversion, which moved dates a day early. Column B is formatted as a date.
+ */
+function dateCell_(iso) { return serial_(iso); }
+function serial_(iso) {
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+  return (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000;
 }
 function todayISO_() { return Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd'); }
 

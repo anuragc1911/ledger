@@ -2,3 +2,7 @@
 .claude/
 .clasp.json
 .deployment-id
+MyData.gs
+quick-add/Secret.gs
+quick-add/.clasp.json
+quick-add/.deployment-id
