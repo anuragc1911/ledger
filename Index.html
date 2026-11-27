@@ -754,6 +754,37 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.3)}
   .tx{padding-left:20px;padding-right:20px}
   .tx + .tx::before{left:70px}
 }
+
+/* ================= Apple dark mode (Settings > Appearance) ================= */
+body.dark{
+  color-scheme:dark;
+  --page:#000000; --surface:#1C1C1E; --surface-2:#2C2C2E; --track:#3A3A3C; --hover:rgba(255,255,255,.04);
+  --ink:#FFFFFF; --ink-2:rgba(235,235,245,.8); --muted:#8E8E93; --faint:#636366;
+  --grid:#2C2C2E; --axis:#48484A; --border:#2C2C2E;
+  --accent:#0A84FF; --primary:#0A84FF; --steel:#0A84FF;
+  --in:#30D158; --out:#FF453A; --in-c:#2FA86E; --out-c:#E0563F;
+  --good-text:#30D158; --bad-text:#FF453A; --gold:#8E8E93; --gold-tint:#1C1C1E;
+}
+html:has(body.dark),body.dark{background:#000}
+body.dark .top{background:rgba(0,0,0,.8)}
+body.dark .tabs{background:rgba(22,22,24,.92);border-top:.5px solid rgba(255,255,255,.15)}
+body.dark .tab{color:#8E8E93}
+body.dark .tab[aria-current=page]{color:var(--accent)}
+body.dark .seg button[aria-pressed=true]{background:#636366;box-shadow:none;color:#fff}
+body.dark .cbtn[aria-pressed=true]{background:var(--surface);border-color:var(--accent)}
+body.dark .keypad button{background:var(--surface);box-shadow:none}
+body.dark .card input.in,body.dark .card select.plain{background:var(--surface-2)}
+body.dark #tip{background:#2C2C2E;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+body.dark #toast{background:#2C2C2E}
+body.dark dialog.sheet::backdrop{background:rgba(0,0,0,.6)}
+body.dark .hint{background:var(--surface-2)}
+body.dark .chart .al{fill:#8E8E93}
+@media (min-width:900px){
+  body.dark .side{background:#161618}
+  body.dark .snav button{color:#fff}
+  body.dark .snav button:hover{background:rgba(255,255,255,.06)}
+  body.dark .snav button[aria-current=page]{background:#2C2C2E;box-shadow:none}
+}
 </style>
 </head>
 <body>
@@ -878,6 +909,7 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.3)}
       </div>
       <div class="col">
         <div class="card"><div class="ch"><h2>General</h2></div>
+          <div class="srow"><div class="t"><b>Appearance</b><small>Saved on this device</small></div><div class="seg" id="themeSeg" style="margin:0;width:170px"><button type="button" data-theme="light">Light</button><button type="button" data-theme="dark">Dark</button></div></div>
           <div class="srow"><div class="t"><b>Budgets</b><small>Monthly limit per category</small></div><button class="btn sm" data-go="budgets">Edit</button></div>
           <div class="srow"><div class="t"><b>Currency</b></div><select class="plain" id="currency" style="width:110px"></select></div>
           <div class="srow"><div class="t"><b>Google Sheet</b><small>All data lives here. You can edit any tab directly.</small></div><a class="btn sm" id="sheetLink" href="#">Open</a></div>
@@ -2353,6 +2385,16 @@ function tryQuick(){
 readParams(p => { if (p.add !== undefined) { QUICK = {type: /^inc/i.test(p.add) ? "income" : "expense", amount: p.amount || "", note: p.note || ""}; tryQuick(); } });
 
 /* ---------------- start ---------------- */
+/* ---------------- appearance: light or dark (black), remembered on this device ---------------- */
+function applyTheme(t){
+  document.body.classList.toggle("dark", t === "dark");
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", t === "dark" ? "#000000" : "#F2F2F7");
+  document.querySelector('meta[name="color-scheme"]').setAttribute("content", t === "dark" ? "dark only" : "light only");
+  document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.theme === t)));
+}
+applyTheme(localStorage.getItem("ledger.theme") || "dark");
+document.getElementById("themeSeg").onclick = e => { const b = e.target.closest("[data-theme]"); if (!b) return; localStorage.setItem("ledger.theme", b.dataset.theme); applyTheme(b.dataset.theme); render(); };
+
 $("#previewNote").hidden = !!IN_GAS;
 try { const c = JSON.parse(localStorage.getItem(CACHE)); if (c && Array.isArray(c.txns) && c.categories && !Array.isArray(c.categories)) { S = c; render(); } } catch {}
 render();
